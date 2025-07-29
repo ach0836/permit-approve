@@ -48,11 +48,32 @@ export default function DashboardHeader() {
     const { user, clearUser } = useAuthStore();
 
     const handleLogout = async () => {
-        clearUser();
-        await signOut({
-            callbackUrl: '/',
-            redirect: true
-        });
+        try {
+            // Zustand 스토어 정리
+            clearUser();
+
+            // 로컬 스토리지 완전 정리
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('auth-storage');
+                localStorage.removeItem('permission-slip-storage');
+                // NextAuth 관련 쿠키/스토리지도 정리
+                document.cookie.split(";").forEach((c) => {
+                    document.cookie = c
+                        .replace(/^ +/, "")
+                        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+            }
+
+            // NextAuth 로그아웃
+            await signOut({
+                callbackUrl: '/',
+                redirect: true
+            });
+        } catch (error) {
+            console.error('로그아웃 중 오류:', error);
+            // 에러가 발생해도 홈으로 리다이렉트
+            window.location.href = '/';
+        }
     };
 
     if (!user) return null;

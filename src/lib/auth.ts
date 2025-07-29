@@ -111,6 +111,27 @@ export const authOptions: NextAuthOptions = {
     },
     session: {
         strategy: 'jwt',
+        // 세션 만료 시간 (30일)
+        maxAge: parseInt(process.env.NEXTAUTH_SESSION_MAX_AGE || '2592000'), // 30일
+        // 세션 업데이트 주기 (24시간)
+        updateAge: 24 * 60 * 60, // 24시간
+    },
+    jwt: {
+        // JWT 토큰 만료 시간 (30일)
+        maxAge: parseInt(process.env.NEXTAUTH_JWT_MAX_AGE || '2592000'), // 30일
+    },
+    cookies: {
+        sessionToken: {
+            name: `next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+                // 쿠키 만료 시간 (30일)
+                maxAge: parseInt(process.env.NEXTAUTH_SESSION_MAX_AGE || '2592000'),
+            },
+        },
     },
     // 접근성 개선을 위한 설정
     useSecureCookies: process.env.NODE_ENV === 'production',

@@ -1,12 +1,16 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { SessionUser, PermissionSlip } from '@/types';
 
 interface AuthStore {
     user: SessionUser | null;
     isLoading: boolean;
+    lastLoginTime: number | null;
     setUser: (user: SessionUser | null) => void;
     setLoading: (loading: boolean) => void;
     clearUser: () => void;
+    updateLastLoginTime: () => void;
+    isSessionValid: () => boolean;
 }
 
 interface PermissionSlipStore {
@@ -18,13 +22,52 @@ interface PermissionSlipStore {
     setLoading: (loading: boolean) => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-    user: null,
-    isLoading: false,
-    setUser: (user) => set({ user }),
-    setLoading: (isLoading) => set({ isLoading }),
-    clearUser: () => set({ user: null }),
-}));
+export const useAuthStore = create<AuthStore>()(
+    persist(
+        (set, get) => ({
+            user: null,
+            isLoading: false,
+            lastLoginTime: null,
+            setUser: (user) => set({
+                user,
+                lastLoginTime: user ? Date.now() : null
+            }),
+            setLoading: (isLoading) => set({ isLoading }),
+            clearUser: () => set({
+                user: null,
+                lastLoginTime: null
+            }),
+            updateLastLoginTime: () => set({ lastLoginTime: Date.now() }),
+            isSessionValid: () => {
+                const { lastLoginTime } = get();
+                if (!lastLoginTime) return false;
+
+                // 30일 = 30 * 24 * 60 * 60 * 1000 밀리초
+                const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+                return Date.now() - lastLoginTime < THIRTY_DAYS;
+            },
+        }),
+        {
+            name: 'auth-storage',
+            storage: createJSONStorage(() => {
+                // 브라우저 환경에서만 localStorage 사용
+                if (typeof window !== 'undefined') {
+                    return localStorage;
+                }
+                // 서버 사이드에서는 더미 스토리지 사용
+                return {
+                    getItem: () => null,
+                    setItem: () => { },
+                    removeItem: () => { },
+                };
+            }),
+            partialize: (state) => ({
+                user: state.user,
+                lastLoginTime: state.lastLoginTime,
+            }),
+        }
+    )
+);
 
 export const usePermissionSlipStore = create<PermissionSlipStore>((set) => ({
     permissionSlips: [],
