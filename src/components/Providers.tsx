@@ -9,7 +9,10 @@ interface ProvidersProps {
 
 export default function Providers({ children }: ProvidersProps) {
     return (
-        <SessionProvider>
+        <SessionProvider 
+            refetchInterval={0} // 자동 갱신 비활성화
+            refetchOnWindowFocus={false} // 윈도우 포커스 시 갱신 비활성화
+        >
             <SessionProviderComponent>
                 {children}
             </SessionProviderComponent>

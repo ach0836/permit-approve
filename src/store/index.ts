@@ -56,6 +56,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     isLoading: false,
 
     setUser: (user) => {
+        // 같은 사용자가 다시 설정되는 것을 방지
+        const currentUser = get().user;
+        if (currentUser && user && currentUser.email === user.email) {
+            return;
+        }
+
         set({ user });
         get().saveUserToStorage(user);
     },
@@ -91,6 +97,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     saveUserToStorage: (user) => {
         if (user) {
+            // 기존 데이터와 같은지 확인
+            const existingUser = getStorageItem('auth-user');
+            if (existingUser && existingUser.email === user.email) {
+                return; // 같은 데이터면 저장하지 않음
+            }
+
             setStorageItem('auth-user', user);
             setStorageItem('auth-timestamp', Date.now());
         } else {
