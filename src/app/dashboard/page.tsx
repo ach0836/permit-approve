@@ -11,15 +11,17 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function Dashboard() {
     const router = useRouter();
-    const { user } = useAuthStore();
+    const { user, isLoading } = useAuthStore();
 
     useEffect(() => {
-        if (!user) {
+        // 로딩 중이 아니고 사용자가 없을 때만 리디렉션
+        if (!isLoading && !user) {
             router.push('/');
         }
-    }, [user, router]);
+    }, [user, isLoading, router]);
 
-    if (!user) {
+    // 로딩 중이거나 사용자가 없으면 로딩 화면 표시
+    if (isLoading || !user) {
         return <LoadingSpinner />;
     }
 
