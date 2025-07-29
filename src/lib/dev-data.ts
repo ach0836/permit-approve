@@ -1,5 +1,5 @@
 // 개발용 메모리 데이터 저장소
-export let permissionSlips: any[] = [];
+export const permissionSlips: Record<string, any>[] = [];
 let nextId = 1;
 
 // ID 생성 함수

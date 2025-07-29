@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        async signIn({ user, account, profile }) {
+        async signIn({ user, account }) {
             if (account?.provider === 'google') {
                 try {
                     // 이메일 기반 역할 결정
@@ -85,7 +85,7 @@ export const authOptions: NextAuthOptions = {
             return true;
         },
 
-        async session({ session, token }) {
+        async session({ session }) {
             if (session.user?.email) {
                 try {
                     // Firestore에서 사용자 역할 정보 가져오기

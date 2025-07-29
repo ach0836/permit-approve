@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store';
 import { UserRole } from '@/types';
 import { FaUser, FaSignOutAlt, FaClipboardList, FaChalkboardTeacher, FaUserShield } from 'react-icons/fa';
@@ -47,7 +46,6 @@ const getRoleText = (role: UserRole) => {
 
 export default function DashboardHeader() {
     const { user, clearUser } = useAuthStore();
-    const router = useRouter();
 
     const handleLogout = async () => {
         clearUser();

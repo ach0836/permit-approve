@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePermissionSlipStore, useAuthStore } from '@/store';
-import { PermissionSlip, PermissionSlipStatus, User, UserRole, TEACHERS } from '@/types';
+import { PermissionSlipStatus, User, UserRole, TEACHERS } from '@/types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { groupBy } from 'lodash';
@@ -53,14 +53,7 @@ export default function AdminDashboard() {
     const { permissionSlips, isLoading, setPermissionSlips, setLoading } = usePermissionSlipStore();
     const { user } = useAuthStore();
 
-    useEffect(() => {
-        fetchPermissionSlips();
-        if (activeTab === 'users') {
-            fetchUsers();
-        }
-    }, [activeTab]);
-
-    const fetchPermissionSlips = async () => {
+    const fetchPermissionSlips = useCallback(async () => {
         setLoading(true);
         try {
             // 관리자는 모든 허가원을 볼 수 있도록 파라미터 추가
@@ -75,25 +68,25 @@ export default function AdminDashboard() {
             const response = await fetch(`/api/permission-slips?${params.toString()}`);
             if (response.ok) {
                 const data = await response.json();
-                setPermissionSlips(data.map((slip: any) => convertPermissionSlipData(slip)));
+                setPermissionSlips(data.map((slip: Record<string, any>) => convertPermissionSlipData(slip)));
             }
         } catch (error) {
             console.error('Error fetching permission slips:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         setIsLoadingUsers(true);
         try {
             const response = await fetch('/api/users');
             if (response.ok) {
                 const data = await response.json();
-                setUsers(data.map((user: any) => ({
-                    ...user,
-                    createdAt: convertFirebaseTimestamp(user.createdAt),
-                    updatedAt: convertFirebaseTimestamp(user.updatedAt),
+                setUsers(data.map((userData: Record<string, any>) => ({
+                    ...userData,
+                    createdAt: convertFirebaseTimestamp(userData.createdAt),
+                    updatedAt: convertFirebaseTimestamp(userData.updatedAt),
                 })));
             }
         } catch (error) {
@@ -101,7 +94,14 @@ export default function AdminDashboard() {
         } finally {
             setIsLoadingUsers(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPermissionSlips();
+        if (activeTab === 'users') {
+            fetchUsers();
+        }
+    }, [activeTab, fetchPermissionSlips, fetchUsers]);
 
     const handleRoleChange = async (email: string, newRole: UserRole) => {
         setUpdatingUserId(email);

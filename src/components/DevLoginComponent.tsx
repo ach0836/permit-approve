@@ -31,7 +31,6 @@ const mockUsers = {
 };
 
 export default function DevLoginComponent() {
-    const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
     const { setUser } = useAuthStore();
     const router = useRouter();
 

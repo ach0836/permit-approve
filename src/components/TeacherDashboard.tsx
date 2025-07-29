@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePermissionSlipStore, useAuthStore } from '@/store';
-import { PermissionSlip, TEACHERS, LOCATIONS } from '@/types';
+import { TEACHERS, LOCATIONS } from '@/types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { convertPermissionSlipData } from '@/utils/firebase';
@@ -14,11 +14,7 @@ export default function TeacherDashboard() {
     const [activeTab, setActiveTab] = useState<'approval' | 'approved'>('approval');
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchPermissionSlips();
-    }, []);
-
-    const fetchPermissionSlips = async () => {
+    const fetchPermissionSlips = useCallback(async () => {
         setLoading(true);
         try {
             // 선생님과 관리자는 모든 허가원을 볼 수 있도록 파라미터 추가
@@ -37,14 +33,18 @@ export default function TeacherDashboard() {
             const response = await fetch(`/api/permission-slips?${params.toString()}`);
             if (response.ok) {
                 const data = await response.json();
-                setPermissionSlips(data.map((slip: any) => convertPermissionSlipData(slip)));
+                setPermissionSlips(data.map((slip: Record<string, any>) => convertPermissionSlipData(slip)));
             }
         } catch (error) {
             console.error('Error fetching permission slips:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
+
+    useEffect(() => {
+        fetchPermissionSlips();
+    }, [fetchPermissionSlips]);
 
     const handleStatusChange = async (id: string, status: 'approved' | 'rejected') => {
         setProcessingId(id);
@@ -303,10 +303,10 @@ export default function TeacherDashboard() {
                                                 }
                                             }}
                                             className={`relative p-4 rounded-2xl font-medium text-center transition-all duration-300 ${count > 0
-                                                    ? selectedLocation === location
-                                                        ? 'bg-gradient-to-br from-blue-700 to-blue-800 text-white shadow-xl transform scale-105 ring-4 ring-blue-300'
-                                                        : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform hover:scale-105 cursor-pointer'
-                                                    : 'bg-gray-50 text-gray-500 border-2 border-gray-200 cursor-not-allowed'
+                                                ? selectedLocation === location
+                                                    ? 'bg-gradient-to-br from-blue-700 to-blue-800 text-white shadow-xl transform scale-105 ring-4 ring-blue-300'
+                                                    : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform hover:scale-105 cursor-pointer'
+                                                : 'bg-gray-50 text-gray-500 border-2 border-gray-200 cursor-not-allowed'
                                                 }`}
                                             disabled={count === 0}
                                         >
@@ -317,7 +317,7 @@ export default function TeacherDashboard() {
                                             )}
                                             <div className="font-bold text-sm mb-1">{location}</div>
                                             <div className="text-xs opacity-80">
-                                                {count > 0 ? (selectedLocation === location ? '선택됨' : '클릭하기') : '없음'}
+                                                {count > 0 ? (selectedLocation === location ? '선택됨' : '선택') : '없음'}
                                             </div>
                                         </button>
                                     ))}

@@ -21,7 +21,7 @@ export default function LoginComponent() {
             if (result?.error) {
                 setError('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
             }
-        } catch (err) {
+        } catch {
             setError('로그인 중 오류가 발생했습니다. 다시 시도해주세요.');
         } finally {
             setIsLoading(false);
