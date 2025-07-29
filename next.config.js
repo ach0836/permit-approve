@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // 실험적 기능
-    experimental: {
-        optimizePackageImports: ['@/components', '@/lib', '@/utils'],
-    },
 
     // 이미지 최적화 설정
     images: {

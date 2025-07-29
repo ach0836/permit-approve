@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePermissionSlipStore, useAuthStore } from '@/store';
+import { studentList } from '@/utils/studentList';
 import { PermissionSlip, PermissionSlipStatus, Student, LOCATIONS, TEACHERS, LocationType } from '@/types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -19,7 +20,7 @@ const getStatusBadge = (status: PermissionSlipStatus) => {
             );
         case 'approved':
             return (
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-full text-sm font-medium">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-400 text-white rounded-full text-sm font-medium">
                     <FaCheckCircle className="w-3 h-3" />
                     승인완료
                 </div>
@@ -43,6 +44,32 @@ export default function StudentDashboard() {
     const { permissionSlips, isLoading, setPermissionSlips, addPermissionSlip, setLoading } = usePermissionSlipStore();
     const { user } = useAuthStore();
 
+    // 상태 복원: localStorage에서 폼 데이터 복원 (클라이언트에서만)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const savedLocation = localStorage.getItem('studentDashboard_location');
+        const savedStudents = localStorage.getItem('studentDashboard_students');
+        const savedReason = localStorage.getItem('studentDashboard_reason');
+        const savedTeacher = localStorage.getItem('studentDashboard_teacher');
+        if (savedLocation) setSelectedLocation(savedLocation as LocationType);
+        if (savedStudents) {
+            try {
+                setStudents(JSON.parse(savedStudents));
+            } catch { }
+        }
+        if (savedReason) setReason(savedReason);
+        if (savedTeacher) setAssignedTeacher(savedTeacher);
+    }, []);
+
+    // 상태 저장: localStorage에 폼 데이터 저장 (클라이언트에서만)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        localStorage.setItem('studentDashboard_location', selectedLocation);
+        localStorage.setItem('studentDashboard_students', JSON.stringify(students));
+        localStorage.setItem('studentDashboard_reason', reason);
+        localStorage.setItem('studentDashboard_teacher', assignedTeacher);
+    }, [selectedLocation, students, reason, assignedTeacher]);
+
     const fetchPermissionSlips = useCallback(async () => {
         if (!user?.email || !user?.role) return;
 
@@ -63,13 +90,13 @@ export default function StudentDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [setPermissionSlips, setLoading]); // user 의존성 제거
+    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
 
     useEffect(() => {
         if (user?.email && user?.role) {
             fetchPermissionSlips();
         }
-    }, [user?.email, user?.role]); // 사용자 정보가 변경될 때만 호출
+    }, [fetchPermissionSlips]);
 
     const addStudent = () => {
         if (students.length < 20) {
@@ -84,9 +111,18 @@ export default function StudentDashboard() {
     };
 
     const updateStudent = (index: number, field: keyof Student, value: string) => {
-        const updatedStudents = students.map((student, i) =>
-            i === index ? { ...student, [field]: value } : student
-        );
+        const updatedStudents = students.map((student, i) => {
+            if (i !== index) return student;
+            if (field === 'name') {
+                const found = studentList.find(s => s.name === value);
+                return {
+                    ...student,
+                    name: value,
+                    studentId: found ? found.studentId : ''
+                };
+            }
+            return { ...student, [field]: value };
+        });
         setStudents(updatedStudents);
     };
 
@@ -102,17 +138,17 @@ export default function StudentDashboard() {
 
         // 유효성 검사
         if (!selectedLocation) {
-            alert('🏠 목적지를 선택해주세요.');
+            alert('장소를 선택해주세요.');
             return;
         }
 
         if (!reason.trim()) {
-            alert('📝 외출 사유를 입력해주세요.');
+            alert('사유를 입력해주세요.');
             return;
         }
 
         if (!assignedTeacher) {
-            alert('👨‍🏫 담당 선생님을 선택해주세요.');
+            alert('담당 선생님을 선택해주세요.');
             return;
         }
 
@@ -170,10 +206,10 @@ export default function StudentDashboard() {
                     <div className="bg-white rounded-3xl p-8 border border-gray-200">
                         <div className="flex flex-col items-center text-center">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
                             </div>
                             <h3 className="text-lg font-semibold text-black mb-2">불러오는 중</h3>
-                            <p className="text-gray-600">허가원 정보를 가져오고 있어요</p>
+                            <p className="text-gray-400">허가원 정보를 가져오고 있어요</p>
                         </div>
                     </div>
                 </div>
@@ -183,12 +219,12 @@ export default function StudentDashboard() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
+            <div className="max-w-full sm:max-w-2xl mx-auto px-2 sm:px-6 py-2 sm:py-8 space-y-4 sm:space-y-8">
                 {/* 허가원 제출 폼 */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                    <div className="p-6 sm:p-8">
+                    <div className="p-3 sm:p-8">
                         <div className="flex items-center gap-3 mb-6 sm:mb-8">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-400 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
                                 <FaClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                             </div>
                             <h2 className="text-xl sm:text-2xl font-bold text-black">허가원 신청</h2>
@@ -196,14 +232,14 @@ export default function StudentDashboard() {
 
                         <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
                             {/* 장소 선택 */}
-                            <div>
+                            <div className="mb-4 sm:mb-0">
                                 <label className="block text-sm sm:text-base font-bold text-black mb-3 sm:mb-4">
-                                    <FaMapMarkerAlt className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
+                                    <FaMapMarkerAlt className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-400" />
                                     허가원 장소
                                 </label>
                                 <div className="relative group">
                                     <select
-                                        className="w-full p-4 sm:p-5 pr-12 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-gradient-to-r from-white to-gray-50 focus:border-blue-600 focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all duration-300 outline-none text-sm sm:text-base text-black appearance-none cursor-pointer shadow-sm hover:shadow-lg hover:border-blue-400 group-hover:from-blue-50 group-hover:to-white"
+                                        className="w-full p-3 sm:p-5 pr-10 sm:pr-12 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-gradient-to-r from-white to-gray-50 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all duration-300 outline-none text-xs sm:text-base text-black appearance-none cursor-pointer shadow-sm hover:shadow-lg hover:border-blue-300 group-hover:from-blue-50 group-hover:to-white overflow-y-auto max-h-52 sm:max-h-60"
                                         value={selectedLocation}
                                         onChange={(e) => setSelectedLocation(e.target.value as LocationType | '')}
                                         required
@@ -216,7 +252,7 @@ export default function StudentDashboard() {
                                         ))}
                                     </select>
                                     <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+                                        <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-400 rounded-lg flex items-center justify-center group-hover:bg-blue-400 transition-colors">
                                             <svg className="w-4 h-4 text-white transform group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -224,13 +260,14 @@ export default function StudentDashboard() {
                                     </div>
                                 </div>
                                 {selectedLocation && (
-                                    <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
-                                        <div className="flex items-center gap-3 text-sm text-blue-800">
-                                            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                                                <FaMapMarkerAlt className="w-3 h-3 text-white" />
+                                    <div className="mt-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl shadow-sm">
+                                        <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-blue-800">
+                                            <div className="w-6 h-6 bg-blue-400 rounded-full flex items-center justify-center">
+                                                <FaMapMarkerAlt className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
                                             </div>
                                             <span className="font-bold">선택된 장소:</span>
                                             <span className="font-medium bg-white px-3 py-1 rounded-full border border-blue-300">{selectedLocation}</span>
+                                            <span className="font-medium bg-white px-2 sm:px-3 py-1 rounded-full border border-blue-300">{selectedLocation}</span>
                                         </div>
                                     </div>
                                 )}
@@ -238,13 +275,13 @@ export default function StudentDashboard() {
 
                             {/* 담당 선생님 선택 */}
                             <div>
-                                <label className="block text-sm sm:text-base font-bold text-black mb-3 sm:mb-4">
-                                    <FaUser className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2 text-green-600" />
-                                    승인 받을 선생님을 선택하세요
+                                <label className="flex items-center gap-2 text-sm sm:text-base font-bold text-black mb-3 sm:mb-4 mt-2 sm:mt-3">
+                                    <FaUser className="w-4 h-4 sm:w-5 sm:h-5 text-green-400 flex-shrink-0" />
+                                    <span>승인 받을 선생님을 선택하세요</span>
                                 </label>
                                 <div className="relative group">
                                     <select
-                                        className="w-full p-4 sm:p-5 pr-12 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-gradient-to-r from-white to-gray-50 focus:border-green-600 focus:ring-4 focus:ring-green-100 focus:bg-white transition-all duration-300 outline-none text-sm sm:text-base text-black appearance-none cursor-pointer shadow-sm hover:shadow-lg hover:border-green-400 group-hover:from-green-50 group-hover:to-white"
+                                        className="w-full p-3 sm:p-5 pr-10 sm:pr-12 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-gradient-to-r from-white to-gray-50 focus:border-green-400 focus:ring-4 focus:ring-green-100 focus:bg-white transition-all duration-300 outline-none text-xs sm:text-base text-black appearance-none cursor-pointer shadow-sm hover:shadow-lg hover:border-green-400 group-hover:from-green-50 group-hover:to-white overflow-y-auto max-h-52 sm:max-h-60"
                                         value={assignedTeacher}
                                         onChange={(e) => setAssignedTeacher(e.target.value)}
                                         required
@@ -257,7 +294,7 @@ export default function StudentDashboard() {
                                         ))}
                                     </select>
                                     <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                                        <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center group-hover:bg-green-700 transition-colors">
+                                        <div className="w-7 h-7 sm:w-8 sm:h-8 bg-green-400 rounded-lg flex items-center justify-center group-hover:bg-green-700 transition-colors">
                                             <svg className="w-4 h-4 text-white transform group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                             </svg>
@@ -266,12 +303,13 @@ export default function StudentDashboard() {
                                 </div>
                                 {assignedTeacher && (
                                     <div className="mt-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm">
-                                        <div className="flex items-center gap-3 text-sm text-green-800">
-                                            <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
-                                                <FaUser className="w-3 h-3 text-white" />
+                                        <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-green-800">
+                                            <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center">
+                                                <FaUser className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
                                             </div>
                                             <span className="font-bold">담당 선생님:</span>
                                             <span className="font-medium bg-white px-3 py-1 rounded-full border border-green-300">{TEACHERS.find(t => t.email === assignedTeacher)?.name}</span>
+                                            <span className="font-medium bg-white px-2 sm:px-3 py-1 rounded-full border border-green-300">{TEACHERS.find(t => t.email === assignedTeacher)?.name}</span>
                                         </div>
                                     </div>
                                 )}
@@ -280,24 +318,24 @@ export default function StudentDashboard() {
                             {/* 학생 목록 */}
                             <div>
                                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                                    <label className="block text-sm sm:text-base font-bold text-black">
+                                    <label className="block text-xs sm:text-base font-bold text-black">
                                         허가원 인원을 작성하세요
                                     </label>
-                                    <span className="text-xs sm:text-sm text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full font-medium">
+                                    <span className="text-xs sm:text-sm text-gray-400 bg-gray-100 px-2 sm:px-4 py-1 rounded-full font-semibold flex items-center justify-center" style={{ minWidth: '70px', textAlign: 'center' }}>
                                         {students.length}/20명
                                     </span>
                                 </div>
 
                                 <div className="space-y-3 sm:space-y-4">
                                     {students.map((student, index) => (
-                                        <div key={index} className="flex gap-2 sm:gap-4 items-center p-3 sm:p-4 bg-white rounded-xl sm:rounded-2xl border-2 border-gray-200 hover:border-blue-600 hover:shadow-sm transition-all">
-                                            <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-gray-100 text-black font-bold rounded-xl sm:rounded-2xl text-sm sm:text-base flex-shrink-0">
+                                        <div key={index} className="flex gap-1 sm:gap-4 items-center p-2 sm:p-4 bg-white rounded-xl sm:rounded-2xl border-2 border-gray-200 hover:border-blue-400 hover:shadow-sm transition-all">
+                                            <div className="flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 bg-gray-100 text-black font-bold rounded-xl sm:rounded-2xl text-xs sm:text-base flex-shrink-0">
                                                 {index + 1}
                                             </div>
                                             <input
                                                 type="text"
                                                 placeholder="이름"
-                                                className="flex-1 min-w-0 p-3 sm:p-4 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-white focus:border-blue-600 transition-all outline-none text-sm sm:text-base text-black placeholder-gray-400"
+                                                className="flex-1 min-w-0 p-2 sm:p-4 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-white focus:border-blue-400 transition-all outline-none text-xs sm:text-base text-black placeholder-gray-400"
                                                 value={student.name}
                                                 onChange={(e) => updateStudent(index, 'name', e.target.value)}
                                                 required
@@ -305,7 +343,7 @@ export default function StudentDashboard() {
                                             <input
                                                 type="text"
                                                 placeholder="학번"
-                                                className="flex-1 min-w-0 p-3 sm:p-4 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-white focus:border-blue-600 transition-all outline-none text-sm sm:text-base text-black placeholder-gray-400"
+                                                className="flex-1 min-w-0 p-2 sm:p-4 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-white focus:border-blue-400 transition-all outline-none text-xs sm:text-base text-black placeholder-gray-400"
                                                 value={student.studentId}
                                                 onChange={(e) => updateStudent(index, 'studentId', e.target.value)}
                                                 required
@@ -314,10 +352,10 @@ export default function StudentDashboard() {
                                                 <button
                                                     type="button"
                                                     onClick={() => removeStudent(index)}
-                                                    className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 text-black rounded-xl sm:rounded-2xl hover:bg-black hover:text-white transition-colors flex items-center justify-center flex-shrink-0"
+                                                    className="w-8 h-8 sm:w-12 sm:h-12 bg-gray-100 text-black rounded-xl sm:rounded-2xl hover:bg-black hover:text-white transition-colors flex items-center justify-center flex-shrink-0"
                                                     title="학생 삭제"
                                                 >
-                                                    <FaTrash className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                    <FaTrash className="w-2 h-2 sm:w-4 sm:h-4" />
                                                 </button>
                                             )}
                                         </div>
@@ -328,10 +366,10 @@ export default function StudentDashboard() {
                                     <button
                                         type="button"
                                         onClick={addStudent}
-                                        className="w-full sm:w-auto flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl sm:rounded-2xl hover:from-green-600 hover:to-green-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 font-semibold text-sm sm:text-base shadow-md hover:shadow-lg"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-3 px-4 sm:px-8 py-2 sm:py-4 bg-gradient-to-r from-green-400 to-green-400 text-white rounded-xl sm:rounded-2xl hover:from-green-400 hover:to-green-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 font-semibold text-xs sm:text-base shadow-md hover:shadow-lg"
                                         disabled={students.length >= 20}
                                     >
-                                        <FaPlus className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        <FaPlus className="w-3 h-3 sm:w-5 sm:h-5" />
                                         {students.length === 1 ? '학생 추가하기' : `학생 추가 (${students.length}/20)`}
                                     </button>
                                     {students.length >= 20 && (
@@ -348,21 +386,21 @@ export default function StudentDashboard() {
                             {/* 사유 입력 */}
                             <div>
                                 <label className="block text-sm sm:text-base font-bold text-black mb-3 sm:mb-4">
-                                    <FaClipboardList className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
+                                    <FaClipboardList className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-400" />
                                     허가원 사유를 작성하시요
                                 </label>
                                 <div className="relative">
                                     <textarea
-                                        className="w-full p-4 sm:p-5 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all outline-none resize-none text-sm sm:text-base text-black placeholder-gray-400 shadow-sm hover:shadow-md"
+                                        className="w-full p-4 sm:p-5 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all outline-none resize-none text-sm sm:text-base text-black placeholder-gray-400 shadow-sm hover:shadow-md"
                                         placeholder="허가원 사유를 입력하세요, 종이 허가원 처럼"
                                         rows={4}
                                         value={reason}
                                         onChange={(e) => setReason(e.target.value)}
                                         required
-                                        maxLength={500}
+                                        maxLength={400}
                                     />
                                     <div className="absolute bottom-3 right-3 text-xs text-gray-400 bg-white px-2 py-1 rounded-full border">
-                                        {reason.length}/500
+                                        {reason.length}/400
                                     </div>
                                 </div>
                                 {reason.length > 450 && (
@@ -382,11 +420,11 @@ export default function StudentDashboard() {
                                 <button
                                     type="button"
                                     onClick={resetForm}
-                                    className="flex-1 py-4 sm:py-5 px-6 sm:px-8 bg-gray-100 text-gray-700 rounded-xl sm:rounded-2xl hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 font-semibold text-sm sm:text-base shadow-sm hover:shadow-md"
+                                    className="flex-1 py-2 sm:py-5 px-3 sm:px-8 bg-gray-100 text-gray-700 rounded-xl sm:rounded-2xl hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 font-semibold text-xs sm:text-base shadow-sm hover:shadow-md"
                                     disabled={isSubmitting}
                                 >
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <span className="flex items-center justify-center gap-1 sm:gap-2">
+                                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                         </svg>
                                         초기화
@@ -394,17 +432,17 @@ export default function StudentDashboard() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 py-4 sm:py-5 px-6 sm:px-8 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl sm:rounded-2xl hover:from-blue-700 hover:to-blue-800 active:scale-95 transition-all disabled:opacity-50 font-bold text-sm sm:text-base shadow-lg hover:shadow-xl"
+                                    className="flex-1 py-2 sm:py-5 px-3 sm:px-8 bg-gradient-to-r from-blue-400 to-blue-400 text-white rounded-xl sm:rounded-2xl hover:from-blue-400 hover:to-blue-400 active:scale-95 transition-all disabled:opacity-50 font-bold text-xs sm:text-base shadow-lg hover:shadow-xl"
                                     disabled={isSubmitting}
                                 >
                                     {isSubmitting ? (
-                                        <span className="flex items-center justify-center gap-3">
-                                            <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        <span className="flex items-center justify-center gap-2 sm:gap-3">
+                                            <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 sm:border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                                             제출하는 중...
                                         </span>
                                     ) : (
-                                        <span className="flex items-center justify-center gap-3">
-                                            <FaPaperPlane className="w-4 h-4 sm:w-5 sm:h-5" />
+                                        <span className="flex items-center justify-center gap-2 sm:gap-3">
+                                            <FaPaperPlane className="w-3 h-3 sm:w-5 sm:h-5" />
                                             허가원 제출하기
                                         </span>
                                     )}
@@ -422,87 +460,97 @@ export default function StudentDashboard() {
                                 <FaClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                             </div>
                             <h2 className="text-xl sm:text-2xl font-bold text-black">제출한 허가원</h2>
-                            <div className="ml-auto bg-blue-600 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-bold">
+                            <div className="ml-auto bg-blue-400 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-bold">
                                 {permissionSlips.length}건
                             </div>
                         </div>
 
-                        {permissionSlips.length === 0 ? (
-                            <div className="text-center py-12 sm:py-16">
-                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                                    <FaClipboardList className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
-                                </div>
-                                <h3 className="text-lg sm:text-xl font-bold text-black mb-2 sm:mb-3">제출한 허가원이 없습니다</h3>
-                                <p className="text-gray-600 text-sm sm:text-base">위 폼을 통해 첫 번째 허가원을 제출해보세요!</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4 sm:space-y-6">
-                                {permissionSlips.map((slip) => (
-                                    <div key={slip.id} className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-gray-200 hover:border-blue-600 hover:shadow-md transition-all">
-                                        <div className="flex flex-col sm:flex-row justify-between items-start mb-4 sm:mb-6 gap-3">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-black rounded-full text-xs sm:text-sm font-bold">
-                                                    <FaMapMarkerAlt className="w-3 h-3" />
-                                                    {slip.location || '장소 미지정'}
-                                                </div>
-                                                <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-black rounded-full text-xs sm:text-sm font-bold">
-                                                    <FaUsers className="w-3 h-3" />
-                                                    {slip.students?.length || 0}명
-                                                </div>
-                                            </div>
-                                            {getStatusBadge(slip.status)}
+                        {(() => {
+                            const today = new Date();
+                            const todaySlips = permissionSlips.filter(slip => {
+                                const slipDate = new Date(slip.createdAt);
+                                return today.toDateString() === slipDate.toDateString();
+                            });
+                            if (todaySlips.length === 0) {
+                                return (
+                                    <div className="text-center py-12 sm:py-16">
+                                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                                            <FaClipboardList className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
                                         </div>
-
-                                        {/* 참여 학생 목록 */}
-                                        {slip.students && slip.students.length > 0 && (
-                                            <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
-                                                <div className="text-sm sm:text-base font-bold text-black mb-3 sm:mb-4 flex items-center gap-2">
-                                                    <FaUsers className="w-3 h-3 sm:w-4 sm:h-4" />
-                                                    참여 학생 명단
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                                                    {slip.students.map((student, studentIndex) => (
-                                                        <div key={studentIndex} className="bg-white border-2 border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                                                            <div className="font-bold text-black text-sm sm:text-base">{student.name}</div>
-                                                            <div className="text-xs sm:text-sm text-gray-600 font-medium">{student.studentId}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* 담당 선생님 정보 */}
-                                        {slip.assignedTeacher && (
-                                            <div className="bg-green-50 border border-green-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
-                                                <div className="text-sm sm:text-base font-bold text-green-800 mb-2 sm:mb-3 flex items-center gap-2">
-                                                    <FaUser className="w-3 h-3 sm:w-4 sm:h-4" />
-                                                    담당 선생님
-                                                </div>
-                                                <div className="text-green-700 text-sm sm:text-base font-medium">
-                                                    {TEACHERS.find(t => t.email === slip.assignedTeacher)?.name || '선생님'}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
-                                            <div className="text-sm sm:text-base font-bold text-black mb-2 sm:mb-3">외출 사유</div>
-                                            <p className="text-gray-800 leading-relaxed text-sm sm:text-base">{slip.reason}</p>
-                                        </div>
-
-                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs sm:text-sm text-gray-600 font-medium gap-2">
-                                            <span>
-                                                제출일: {format(slip.createdAt, 'yyyy년 MM월 dd일 HH:mm', { locale: ko })}
-                                            </span>
-                                            {slip.processedBy && (
-                                                <span className="text-right">
-                                                    처리: {slip.processedBy.name} ({format(slip.processedBy.processedAt, 'MM월 dd일 HH:mm', { locale: ko })})
-                                                </span>
-                                            )}
-                                        </div>
+                                        <h3 className="text-lg sm:text-xl font-bold text-black mb-2 sm:mb-3">오늘 제출한 허가원이 없습니다</h3>
+                                        <p className="text-gray-400 text-sm sm:text-base">위 폼을 통해 허가원을 제출해보세요!</p>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+                                );
+                            }
+                            return (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                    {todaySlips.map((slip) => (
+                                        <div key={slip.id} className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-gray-200 hover:border-blue-400 hover:shadow-md transition-all">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start mb-4 sm:mb-6 gap-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-black rounded-full text-xs sm:text-sm font-bold">
+                                                        <FaMapMarkerAlt className="w-3 h-3" />
+                                                        {slip.location || '장소 미지정'}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-black rounded-full text-xs sm:text-sm font-bold">
+                                                        <FaUsers className="w-3 h-3" />
+                                                        {slip.students?.length || 0}명
+                                                    </div>
+                                                </div>
+                                                {getStatusBadge(slip.status)}
+                                            </div>
+
+                                            {/* 참여 학생 목록 */}
+                                            {slip.students && slip.students.length > 0 && (
+                                                <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
+                                                    <div className="text-sm sm:text-base font-bold text-black mb-3 sm:mb-4 flex items-center gap-2">
+                                                        <FaUsers className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                        참여 학생 명단
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-1">
+                                                        {slip.students.map((student, studentIndex) => (
+                                                            <div key={studentIndex} className="bg-white border-2 border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                                                                <div className="font-bold text-black text-sm sm:text-base">{student.name}</div>
+                                                                <div className="text-xs sm:text-sm text-gray-400 font-medium">{student.studentId}</div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* 담당 선생님 정보 */}
+                                            {slip.assignedTeacher && (
+                                                <div className="bg-green-50 border border-green-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
+                                                    <div className="text-sm sm:text-base font-bold text-green-800 mb-2 sm:mb-3 flex items-center gap-2">
+                                                        <FaUser className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                        담당 선생님
+                                                    </div>
+                                                    <div className="text-green-700 text-sm sm:text-base font-medium">
+                                                        {TEACHERS.find(t => t.email === slip.assignedTeacher)?.name || '선생님'}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
+                                                <div className="text-sm sm:text-base font-bold text-black mb-2 sm:mb-3">사유</div>
+                                                <p className="text-gray-800 leading-relaxed text-sm sm:text-base">{slip.reason}</p>
+                                            </div>
+
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs sm:text-sm text-gray-400 font-medium gap-2">
+                                                <span>
+                                                    제출일: {format(slip.createdAt, 'yyyy년 MM월 dd일 HH:mm', { locale: ko })}
+                                                </span>
+                                                {slip.processedBy && (
+                                                    <span className="text-right">
+                                                        처리: {slip.processedBy.name} ({format(slip.processedBy.processedAt, 'MM월 dd일 HH:mm', { locale: ko })})
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
 
@@ -515,7 +563,7 @@ export default function StudentDashboard() {
 
                             {/* 성공 애니메이션 아이콘 */}
                             <div className="relative z-10">
-                                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 shadow-lg animate-pulse">
+                                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 shadow-lg animate-pulse">
                                     <FaCheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white animate-bounce" />
                                 </div>
                                 <h3 className="text-2xl sm:text-3xl font-bold text-black mb-3 sm:mb-4">제출 완료!</h3>
@@ -523,7 +571,7 @@ export default function StudentDashboard() {
                                     <p className="text-gray-700 text-base sm:text-lg font-medium">
                                         🎉 허가원이 성공적으로 제출되었습니다
                                     </p>
-                                    <p className="text-gray-600 text-sm sm:text-base">
+                                    <p className="text-gray-400 text-sm sm:text-base">
                                         선생님의 승인을 기다려주세요
                                     </p>
                                 </div>
@@ -531,7 +579,7 @@ export default function StudentDashboard() {
                         </div>
                         <div className="flex justify-center relative z-10">
                             <form method="dialog">
-                                <button className="px-8 sm:px-10 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-2xl hover:from-blue-700 hover:to-green-700 active:scale-95 transition-all font-bold text-base sm:text-lg shadow-lg hover:shadow-xl">
+                                <button className="px-8 sm:px-10 py-3 sm:py-4 bg-gradient-to-r from-blue-400 to-green-400 text-white rounded-2xl hover:from-blue-400 hover:to-green-400 active:scale-95 transition-all font-bold text-base sm:text-lg shadow-lg hover:shadow-xl">
                                     완료
                                 </button>
                             </form>
