@@ -54,16 +54,14 @@ export default function AdminDashboard() {
     const { user } = useAuthStore();
 
     const fetchPermissionSlips = useCallback(async () => {
+        if (!user?.email || !user?.role) return;
+
         setLoading(true);
         try {
             // 관리자는 모든 허가원을 볼 수 있도록 파라미터 추가
             const params = new URLSearchParams();
-            if (user?.email) {
-                params.append('userEmail', user.email);
-            }
-            if (user?.role) {
-                params.append('userRole', user.role);
-            }
+            params.append('userEmail', user.email);
+            params.append('userRole', user.role);
 
             const response = await fetch(`/api/permission-slips?${params.toString()}`);
             if (response.ok) {
@@ -75,7 +73,7 @@ export default function AdminDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
+    }, [setPermissionSlips, setLoading]); // user 의존성 제거
 
     const fetchUsers = useCallback(async () => {
         setIsLoadingUsers(true);
@@ -100,11 +98,13 @@ export default function AdminDashboard() {
     }, []);
 
     useEffect(() => {
-        fetchPermissionSlips();
+        if (user?.email && user?.role) {
+            fetchPermissionSlips();
+        }
         if (activeTab === 'users') {
             fetchUsers();
         }
-    }, [activeTab, fetchPermissionSlips, fetchUsers]);
+    }, [activeTab, user?.email, user?.role]); // fetchPermissionSlips와 fetchUsers 의존성 제거
 
     const handleRoleChange = async (email: string, newRole: UserRole) => {
         setUpdatingUserId(email);

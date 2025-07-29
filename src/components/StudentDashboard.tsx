@@ -44,16 +44,14 @@ export default function StudentDashboard() {
     const { user } = useAuthStore();
 
     const fetchPermissionSlips = useCallback(async () => {
+        if (!user?.email || !user?.role) return;
+
         setLoading(true);
         try {
             // 사용자 정보를 포함한 API 요청
             const params = new URLSearchParams();
-            if (user?.email) {
-                params.append('userEmail', user.email);
-            }
-            if (user?.role) {
-                params.append('userRole', user.role);
-            }
+            params.append('userEmail', user.email);
+            params.append('userRole', user.role);
 
             const response = await fetch(`/api/permission-slips?${params.toString()}`);
             if (response.ok) {
@@ -65,11 +63,13 @@ export default function StudentDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
+    }, [setPermissionSlips, setLoading]); // user 의존성 제거
 
     useEffect(() => {
-        fetchPermissionSlips();
-    }, [fetchPermissionSlips]); // fetchPermissionSlips를 의존성으로 추가
+        if (user?.email && user?.role) {
+            fetchPermissionSlips();
+        }
+    }, [user?.email, user?.role]); // 사용자 정보가 변경될 때만 호출
 
     const addStudent = () => {
         if (students.length < 20) {

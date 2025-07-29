@@ -15,18 +15,16 @@ export default function TeacherDashboard() {
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
 
     const fetchPermissionSlips = useCallback(async () => {
+        if (!user?.email || !user?.role) return;
+
         setLoading(true);
         try {
             // 선생님과 관리자는 모든 허가원을 볼 수 있도록 파라미터 추가
             const params = new URLSearchParams();
-            if (user?.email) {
-                params.append('userEmail', user.email);
-            }
-            if (user?.role) {
-                params.append('userRole', user.role);
-            }
+            params.append('userEmail', user.email);
+            params.append('userRole', user.role);
             // 선생님인 경우 자신에게 할당된 허가원만 필터링
-            if (user?.role === 'teacher' && user?.email) {
+            if (user.role === 'teacher') {
                 params.append('assignedTeacher', user.email);
             }
 
@@ -40,11 +38,13 @@ export default function TeacherDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
+    }, [setPermissionSlips, setLoading]); // user 의존성 제거
 
     useEffect(() => {
-        fetchPermissionSlips();
-    }, [fetchPermissionSlips]);
+        if (user?.email && user?.role) {
+            fetchPermissionSlips();
+        }
+    }, [user?.email, user?.role]); // 사용자 정보가 변경될 때만 호출
 
     const handleStatusChange = async (id: string, status: 'approved' | 'rejected') => {
         setProcessingId(id);
