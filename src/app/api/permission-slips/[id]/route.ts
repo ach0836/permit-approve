@@ -5,9 +5,10 @@ import { doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const { status, userEmail, userName } = await request.json();
 
         if (!['approved', 'rejected'].includes(status)) {
@@ -15,7 +16,7 @@ export async function PUT(
         }
 
         // 허가원 문서 참조
-        const slipRef = doc(db, 'permissionSlips', params.id);
+        const slipRef = doc(db, 'permissionSlips', id);
         const slipDoc = await getDoc(slipRef);
 
         if (!slipDoc.exists()) {

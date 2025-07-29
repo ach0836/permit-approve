@@ -58,7 +58,7 @@ export default function StudentDashboard() {
             const response = await fetch(`/api/permission-slips?${params.toString()}`);
             if (response.ok) {
                 const data = await response.json();
-                setPermissionSlips(data.map((slip: Record<string, any>) => convertPermissionSlipData(slip)));
+                setPermissionSlips(data.map((slip: unknown) => convertPermissionSlipData(slip as Record<string, unknown>)));
             }
         } catch (error) {
             console.error('Error fetching permission slips:', error);
@@ -145,7 +145,7 @@ export default function StudentDashboard() {
 
             if (response.ok) {
                 const newSlip = await response.json();
-                addPermissionSlip(convertPermissionSlipData(newSlip as Record<string, any>) as PermissionSlip);
+                addPermissionSlip(convertPermissionSlipData(newSlip as Record<string, unknown>) as PermissionSlip);
                 resetForm();
 
                 // 성공 알림

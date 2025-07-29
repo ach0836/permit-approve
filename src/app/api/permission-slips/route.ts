@@ -41,9 +41,9 @@ export async function GET(request: NextRequest) {
         }));
 
         // 클라이언트 사이드에서 정렬 처리
-        permissionSlips.sort((a: Record<string, any>, b: Record<string, any>) => {
-            const aTime = a.createdAt?.seconds || 0;
-            const bTime = b.createdAt?.seconds || 0;
+        permissionSlips.sort((a, b) => {
+            const aTime = (a as { createdAt?: { seconds: number } }).createdAt?.seconds || 0;
+            const bTime = (b as { createdAt?: { seconds: number } }).createdAt?.seconds || 0;
             return bTime - aTime;
         });
 

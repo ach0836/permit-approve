@@ -68,7 +68,7 @@ export default function AdminDashboard() {
             const response = await fetch(`/api/permission-slips?${params.toString()}`);
             if (response.ok) {
                 const data = await response.json();
-                setPermissionSlips(data.map((slip: Record<string, any>) => convertPermissionSlipData(slip)));
+                setPermissionSlips(data.map((slip: unknown) => convertPermissionSlipData(slip as Record<string, unknown>)));
             }
         } catch (error) {
             console.error('Error fetching permission slips:', error);
@@ -83,11 +83,14 @@ export default function AdminDashboard() {
             const response = await fetch('/api/users');
             if (response.ok) {
                 const data = await response.json();
-                setUsers(data.map((userData: Record<string, any>) => ({
-                    ...userData,
-                    createdAt: convertFirebaseTimestamp(userData.createdAt),
-                    updatedAt: convertFirebaseTimestamp(userData.updatedAt),
-                })));
+                setUsers(data.map((userData: unknown) => {
+                    const user = userData as Record<string, unknown>;
+                    return {
+                        ...user,
+                        createdAt: convertFirebaseTimestamp(user.createdAt as string | number | Date | Record<string, unknown>),
+                        updatedAt: convertFirebaseTimestamp(user.updatedAt as string | number | Date | Record<string, unknown>),
+                    };
+                }));
             }
         } catch (error) {
             console.error('Error fetching users:', error);

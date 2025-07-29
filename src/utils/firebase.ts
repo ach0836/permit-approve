@@ -1,12 +1,12 @@
 // Firebase Timestamp를 JavaScript Date로 변환하는 유틸리티 함수
 
-export function convertFirebaseTimestamp(timestamp: Record<string, any> | string | number | Date): Date {
+export function convertFirebaseTimestamp(timestamp: Record<string, unknown> | string | number | Date): Date {
     if (!timestamp) {
         return new Date();
     }
 
     // Firebase Timestamp 객체인 경우
-    if (typeof timestamp === 'object' && 'seconds' in timestamp && timestamp.seconds !== undefined) {
+    if (typeof timestamp === 'object' && 'seconds' in timestamp && typeof timestamp.seconds === 'number') {
         return new Date(timestamp.seconds * 1000);
     }
 
@@ -27,14 +27,14 @@ export function convertFirebaseTimestamp(timestamp: Record<string, any> | string
     return new Date();
 }
 
-export function convertPermissionSlipData(slip: Record<string, any>) {
+export function convertPermissionSlipData(slip: Record<string, unknown>) {
     return {
         ...slip,
-        createdAt: convertFirebaseTimestamp(slip.createdAt),
-        updatedAt: convertFirebaseTimestamp(slip.updatedAt),
+        createdAt: convertFirebaseTimestamp(slip.createdAt as Record<string, unknown> | string | number | Date),
+        updatedAt: convertFirebaseTimestamp(slip.updatedAt as Record<string, unknown> | string | number | Date),
         processedBy: slip.processedBy ? {
-            ...slip.processedBy,
-            processedAt: convertFirebaseTimestamp(slip.processedBy.processedAt)
+            ...(slip.processedBy as Record<string, unknown>),
+            processedAt: convertFirebaseTimestamp((slip.processedBy as Record<string, unknown>).processedAt as Record<string, unknown> | string | number | Date)
         } : undefined
     };
 }
