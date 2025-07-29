@@ -2,14 +2,22 @@
 
 import { useSession } from 'next-auth/react';
 import { useAuthStore } from '@/store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { UserRole } from '@/types';
+import HydrationGuard from './HydrationGuard';
 
 export default function SessionProvider({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession();
-    const { setUser, setLoading, user, isSessionValid, clearUser, updateLastLoginTime } = useAuthStore();
+    const { setUser, setLoading, user, isSessionValid, clearUser, updateLastLoginTime, hydrated } = useAuthStore();
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (!mounted || !hydrated) return;
+
         setLoading(status === 'loading');
 
         if (status === 'authenticated' && session?.user) {
@@ -39,5 +47,11 @@ export default function SessionProvider({ children }: { children: React.ReactNod
                 clearUser();
             }
         }
-    }, [session, status, setUser, setLoading, user, isSessionValid, clearUser, updateLastLoginTime]); return <>{children}</>;
+    }, [session, status, setUser, setLoading, user, isSessionValid, clearUser, updateLastLoginTime, mounted, hydrated]);
+
+    return (
+        <HydrationGuard>
+            {children}
+        </HydrationGuard>
+    );
 }

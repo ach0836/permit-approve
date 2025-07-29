@@ -6,11 +6,13 @@ interface AuthStore {
     user: SessionUser | null;
     isLoading: boolean;
     lastLoginTime: number | null;
+    hydrated: boolean;
     setUser: (user: SessionUser | null) => void;
     setLoading: (loading: boolean) => void;
     clearUser: () => void;
     updateLastLoginTime: () => void;
     isSessionValid: () => boolean;
+    setHydrated: () => void;
 }
 
 interface PermissionSlipStore {
@@ -28,6 +30,7 @@ export const useAuthStore = create<AuthStore>()(
             user: null,
             isLoading: false,
             lastLoginTime: null,
+            hydrated: false,
             setUser: (user) => set({
                 user,
                 lastLoginTime: user ? Date.now() : null
@@ -46,6 +49,7 @@ export const useAuthStore = create<AuthStore>()(
                 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
                 return Date.now() - lastLoginTime < THIRTY_DAYS;
             },
+            setHydrated: () => set({ hydrated: true }),
         }),
         {
             name: 'auth-storage',
@@ -65,11 +69,12 @@ export const useAuthStore = create<AuthStore>()(
                 user: state.user,
                 lastLoginTime: state.lastLoginTime,
             }),
+            onRehydrateStorage: () => (state) => {
+                state?.setHydrated();
+            },
         }
     )
-);
-
-export const usePermissionSlipStore = create<PermissionSlipStore>((set) => ({
+); export const usePermissionSlipStore = create<PermissionSlipStore>((set) => ({
     permissionSlips: [],
     isLoading: false,
     setPermissionSlips: (permissionSlips) => set({ permissionSlips }),
