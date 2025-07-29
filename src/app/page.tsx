@@ -6,16 +6,19 @@ import { useEffect } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function Home() {
-  const { user } = useAuthStore();
+  const { user, isLoading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    } else {
-      router.push('/auth/signin');
+    // 로딩 중이 아닐 때만 리디렉션 수행
+    if (!isLoading) {
+      if (user) {
+        router.push('/dashboard');
+      } else {
+        router.push('/auth/signin');
+      }
     }
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
   return <LoadingSpinner />;
 }

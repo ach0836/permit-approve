@@ -2,11 +2,22 @@
 
 import { signIn } from 'next-auth/react';
 import { FcGoogle } from 'react-icons/fc';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/store';
+import { useRouter } from 'next/navigation';
 
 export default function LoginComponent() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { user, isLoading: authLoading } = useAuthStore();
+    const router = useRouter();
+
+    // 이미 로그인된 사용자는 대시보드로 리디렉션
+    useEffect(() => {
+        if (!authLoading && user) {
+            router.push('/dashboard');
+        }
+    }, [user, authLoading, router]);
 
     const handleGoogleSignIn = async () => {
         try {
@@ -27,6 +38,19 @@ export default function LoginComponent() {
             setIsLoading(false);
         }
     };
+
+    // 인증 로딩 중일 때는 로딩 화면 표시
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="text-gray-600">로딩 중...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4" role="main">
             <div className="max-w-md w-full">
@@ -84,10 +108,6 @@ export default function LoginComponent() {
                                 </>
                             )}
                         </button>
-                    </div>
-
-                    <div className="mt-6 text-center text-xs text-gray-500" role="note" aria-label="이용약관 안내">
-                        로그인하면 이용약관 및 개인정보처리방침에 동의하는 것으로 간주됩니다.
                     </div>
                 </div>
             </div>
