@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, ReactNode, useRef } from 'react';
+import { useEffect, ReactNode, useRef, useCallback, useMemo } from 'react';
 import { useAuthStore } from '@/store';
 
 interface SessionProviderProps {
@@ -13,44 +13,62 @@ export default function SessionProvider({ children }: SessionProviderProps) {
     const authStore = useAuthStore();
     const hasLoadedFromStorage = useRef(false);
     const lastSessionRef = useRef<string | null>(null);
+    const lastStatusRef = useRef<string>('');
 
-    // 컴포넌트 마운트 시 로컬 스토리지에서 사용자 정보 로드 (한 번만)
-    useEffect(() => {
+    // 세션 정보를 메모화하여 불필요한 리렌더링 방지
+    const sessionEmail = useMemo(() => session?.user?.email || null, [session?.user?.email]);
+    const sessionName = useMemo(() => session?.user?.name || '', [session?.user?.name]);
+    const sessionImage = useMemo(() => session?.user?.image || '', [session?.user?.image]);
+
+    // 로컬 스토리지 로드 함수를 메모화
+    const loadFromStorage = useCallback(() => {
         if (typeof window !== 'undefined' && !hasLoadedFromStorage.current) {
             authStore.loadUserFromStorage();
             hasLoadedFromStorage.current = true;
         }
     }, []);
 
+    // 컴포넌트 마운트 시 로컬 스토리지에서 사용자 정보 로드 (한 번만)
+    useEffect(() => {
+        loadFromStorage();
+    }, [loadFromStorage]);
+
     // 세션 상태 변경 시 사용자 정보 업데이트 (실제 변경된 경우만)
     useEffect(() => {
-        const sessionId = session?.user?.email || null;
-
-        // 세션이 실제로 변경되지 않았다면 무시
-        if (lastSessionRef.current === sessionId && status !== 'loading') {
+        // 상태와 세션 모두 변경되지 않았다면 무시  
+        if (lastSessionRef.current === sessionEmail && lastStatusRef.current === status) {
             return;
         }
 
-        console.log('Session status:', status, 'Session ID:', sessionId);
+        // 이전 상태와 현재 상태 저장
+        const prevStatus = lastStatusRef.current;
+        lastStatusRef.current = status;
 
-        authStore.setLoading(status === 'loading');
+        console.log('Session status changed:', prevStatus, '->', status, 'Session ID:', sessionEmail);
 
-        if (status === 'authenticated' && session?.user?.email) {
-            const { email, name, image } = session.user;
-            lastSessionRef.current = email;
+        // 로딩 상태는 실제 상태 변경시에만 업데이트
+        if (prevStatus !== status) {
+            authStore.setLoading(status === 'loading');
+        }
 
-            authStore.setUser({
-                id: email,
-                email,
-                name: name || '',
-                image: image || '',
-                role: 'student'
-            });
+        if (status === 'authenticated' && sessionEmail) {
+            // 같은 사용자면 업데이트하지 않음
+            if (lastSessionRef.current !== sessionEmail) {
+                lastSessionRef.current = sessionEmail;
+
+                authStore.setUser({
+                    id: sessionEmail,
+                    email: sessionEmail,
+                    name: sessionName,
+                    image: sessionImage,
+                    role: 'student'
+                });
+            }
         } else if (status === 'unauthenticated') {
             lastSessionRef.current = null;
             // 로그아웃이 아닌 경우 로컬 스토리지 데이터 유지
         }
-    }, [session?.user?.email, status]);
+    }, [sessionEmail, sessionName, sessionImage, status, authStore]);
 
     return <>{children}</>;
 }
