@@ -54,8 +54,8 @@ export default function DashboardHeader() {
 
             // 로컬 스토리지 완전 정리
             if (typeof window !== 'undefined') {
-                localStorage.removeItem('auth-storage');
-                localStorage.removeItem('permission-slip-storage');
+                localStorage.removeItem('auth-user');
+                localStorage.removeItem('auth-timestamp');
                 // NextAuth 관련 쿠키/스토리지도 정리
                 document.cookie.split(";").forEach((c) => {
                     document.cookie = c
@@ -74,9 +74,7 @@ export default function DashboardHeader() {
             // 에러가 발생해도 홈으로 리다이렉트
             window.location.href = '/';
         }
-    };
-
-    if (!user) return null;
+    }; if (!user) return null;
 
     return (
         <div className="bg-white border-b-2 border-gray-200 sticky top-0 z-50">

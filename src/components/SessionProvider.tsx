@@ -1,57 +1,44 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
+import { useEffect, ReactNode } from 'react';
 import { useAuthStore } from '@/store';
-import { useEffect, useState } from 'react';
-import { UserRole } from '@/types';
-import HydrationGuard from './HydrationGuard';
 
-export default function SessionProvider({ children }: { children: React.ReactNode }) {
+interface SessionProviderProps {
+    children: ReactNode;
+}
+
+export default function SessionProvider({ children }: SessionProviderProps) {
     const { data: session, status } = useSession();
-    const { setUser, setLoading, user, isSessionValid, clearUser, updateLastLoginTime, hydrated } = useAuthStore();
-    const [mounted, setMounted] = useState(false);
+    const { setUser, setLoading, loadUserFromStorage } = useAuthStore();
 
+    // 컴포넌트 마운트 시 로컬 스토리지에서 사용자 정보 로드
     useEffect(() => {
-        setMounted(true);
-    }, []);
+        if (typeof window !== 'undefined') {
+            loadUserFromStorage();
+        }
+    }, [loadUserFromStorage]);
 
+    // 세션 상태 변경 시 사용자 정보 업데이트
     useEffect(() => {
-        if (!mounted || !hydrated) return;
-
         setLoading(status === 'loading');
 
         if (status === 'authenticated' && session?.user) {
-            console.log('✅ 사용자 로그인 성공:', {
-                email: session.user.email,
-                name: session.user.name,
-                role: (session.user as { role?: UserRole }).role
-            });
-            setUser({
-                id: session.user.email || '', // 이메일을 ID로 사용
-                email: session.user.email || '',
-                name: session.user.name || '',
-                image: session.user.image || '',
-                role: ((session.user as { role?: UserRole }).role || 'student') as UserRole,
-            });
-            updateLastLoginTime();
-        } else if (status === 'unauthenticated') {
-            console.log('❌ 사용자 인증되지 않음');
-
-            // 캐시된 세션이 유효한지 확인
-            if (user && isSessionValid()) {
-                console.log('📦 캐시된 세션 사용 중');
-                // 캐시된 세션이 유효하면 유지
-                return;
-            } else {
-                console.log('🗑️ 만료된 세션 삭제');
-                clearUser();
+            const { email, name, image } = session.user;
+            if (email) {
+                setUser({
+                    id: email, // 이메일을 ID로 사용
+                    email,
+                    name: name || '',
+                    image: image || '',
+                    role: 'student' // 기본값, 실제로는 Firebase에서 가져와야 함
+                });
             }
+        } else if (status === 'unauthenticated') {
+            // NextAuth 세션이 없을 때는 로컬 스토리지의 데이터만 유지
+            // 사용자가 명시적으로 로그아웃하지 않은 경우 세션 유지
         }
-    }, [session, status, setUser, setLoading, user, isSessionValid, clearUser, updateLastLoginTime, mounted, hydrated]);
+    }, [session, status, setUser, setLoading]);
 
-    return (
-        <HydrationGuard>
-            {children}
-        </HydrationGuard>
-    );
+    return <>{children}</>;
 }

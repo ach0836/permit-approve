@@ -253,7 +253,7 @@ export default function AdminDashboard() {
                                                                                 👥 참여 학생 ({slip.students.length}명)
                                                                             </div>
                                                                             <div className="flex flex-wrap gap-2">
-                                                                                {slip.students.map((student, index) => (
+                                                                                {slip.students.map((student: { name: string; studentId: string }, index: number) => (
                                                                                     <div key={index} className="px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">
                                                                                         {student.name} ({student.studentId})
                                                                                     </div>
