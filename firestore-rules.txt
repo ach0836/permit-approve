@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 개발 중에는 모든 읽기/쓰기 허용 (나중에 보안 규칙 강화 필요)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // 프로덕션에서는 다음과 같은 보안 규칙 사용 권장:
+    // match /permissionSlips/{docId} {
+    //   allow read, write: if request.auth != null;
+    //   allow read: if request.auth.token.role == 'admin' || 
+    //               request.auth.token.role == 'teacher' ||
+    //               (request.auth.token.role == 'student' && 
+    //                resource.data.studentEmail == request.auth.token.email);
+    // }
+    // 
+    // match /users/{userId} {
+    //   allow read, write: if request.auth != null && 
+    //                         (request.auth.uid == userId || 
+    //                          request.auth.token.role == 'admin');
+    // }
+  }
+}
