@@ -6,6 +6,7 @@ import { TEACHERS, LOCATIONS } from '@/types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { convertPermissionSlipData } from '@/utils/firebase';
+import Toast from './Toast';
 
 export default function TeacherDashboard() {
     const { permissionSlips, isLoading, setPermissionSlips, updatePermissionSlip, setLoading } = usePermissionSlipStore();
@@ -13,6 +14,7 @@ export default function TeacherDashboard() {
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'approval' | 'approved'>('approval');
     const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
 
     const fetchPermissionSlips = useCallback(async () => {
         if (!user?.email || !user?.role) return;
@@ -71,17 +73,14 @@ export default function TeacherDashboard() {
                         processedAt: new Date(),
                     }
                 });
-
-                // 성공 알림
-                const modal = document.getElementById('success_modal') as HTMLDialogElement;
-                if (modal) modal.showModal();
+                setToast({ message: status === 'approved' ? '승인 완료!' : '반려 처리 완료!', type: 'success' });
             } else {
                 const error = await response.json();
-                alert(`오류: ${error.error}`);
+                setToast({ message: `❌ 오류: ${error.error}`, type: 'error' });
             }
         } catch (error) {
             console.error('Error updating permission slip:', error);
-            alert('처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+            setToast({ message: '⚠️ 처리 중 오류가 발생했습니다. 다시 시도해주세요.', type: 'error' });
         } finally {
             setProcessingId(null);
         }
@@ -123,6 +122,13 @@ export default function TeacherDashboard() {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
             <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
                 {/* 탭 네비게이션 */}
                 <div className="flex bg-white rounded-xl sm:rounded-2xl p-1 sm:p-2 mb-6 sm:mb-8 border border-gray-200">

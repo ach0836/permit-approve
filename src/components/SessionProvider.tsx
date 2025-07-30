@@ -61,7 +61,7 @@ export default function SessionProvider({ children }: SessionProviderProps) {
                     email: sessionEmail,
                     name: sessionName,
                     image: sessionImage,
-                    role: 'student'
+                    role: session?.user?.role ?? 'student'
                 });
             }
         } else if (status === 'unauthenticated') {

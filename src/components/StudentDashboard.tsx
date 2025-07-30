@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePermissionSlipStore, useAuthStore } from '@/store';
 import { studentList } from '@/utils/studentList';
 import { PermissionSlip, PermissionSlipStatus, Student, LOCATIONS, TEACHERS, LocationType } from '@/types';
+import Toast from './Toast';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { FaPlus, FaTrash, FaMapMarkerAlt, FaUsers, FaClipboardList, FaPaperPlane, FaClock, FaCheckCircle, FaTimesCircle, FaUser } from 'react-icons/fa';
@@ -41,6 +42,7 @@ export default function StudentDashboard() {
     const [reason, setReason] = useState('');
     const [assignedTeacher, setAssignedTeacher] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null);
     const { permissionSlips, isLoading, setPermissionSlips, addPermissionSlip, setLoading } = usePermissionSlipStore();
     const { user } = useAuthStore();
 
@@ -183,17 +185,14 @@ export default function StudentDashboard() {
                 const newSlip = await response.json();
                 addPermissionSlip(convertPermissionSlipData(newSlip as Record<string, unknown>) as PermissionSlip);
                 resetForm();
-
-                // 성공 알림
-                const modal = document.getElementById('success_modal') as HTMLDialogElement;
-                if (modal) modal.showModal();
+                setToast({ message: '신청이 완료되었습니다!', type: 'success' });
             } else {
                 const error = await response.json();
-                alert(`❌ 오류: ${error.error}`);
+                setToast({ message: `❌ 오류: ${error.error}`, type: 'error' });
             }
         } catch (error) {
             console.error('Error submitting permission slip:', error);
-            alert('⚠️ 허가원 제출 중 오류가 발생했습니다. 다시 시도해주세요.');
+            setToast({ message: '⚠️ 허가원 제출 중 오류가 발생했습니다. 다시 시도해주세요.', type: 'error' });
         } finally {
             setIsSubmitting(false);
         }
@@ -219,6 +218,13 @@ export default function StudentDashboard() {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
             <div className="max-w-full sm:max-w-2xl mx-auto px-2 sm:px-6 py-2 sm:py-8 space-y-4 sm:space-y-8">
                 {/* 허가원 제출 폼 */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -267,7 +273,6 @@ export default function StudentDashboard() {
                                             </div>
                                             <span className="font-bold">선택된 장소:</span>
                                             <span className="font-medium bg-white px-3 py-1 rounded-full border border-blue-300">{selectedLocation}</span>
-                                            <span className="font-medium bg-white px-2 sm:px-3 py-1 rounded-full border border-blue-300">{selectedLocation}</span>
                                         </div>
                                     </div>
                                 )}
@@ -309,7 +314,6 @@ export default function StudentDashboard() {
                                             </div>
                                             <span className="font-bold">담당 선생님:</span>
                                             <span className="font-medium bg-white px-3 py-1 rounded-full border border-green-300">{TEACHERS.find(t => t.email === assignedTeacher)?.name}</span>
-                                            <span className="font-medium bg-white px-2 sm:px-3 py-1 rounded-full border border-green-300">{TEACHERS.find(t => t.email === assignedTeacher)?.name}</span>
                                         </div>
                                     </div>
                                 )}
@@ -392,7 +396,7 @@ export default function StudentDashboard() {
                                 <div className="relative">
                                     <textarea
                                         className="w-full p-4 sm:p-5 border-2 border-gray-200 rounded-xl sm:rounded-2xl bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all outline-none resize-none text-sm sm:text-base text-black placeholder-gray-400 shadow-sm hover:shadow-md"
-                                        placeholder="허가원 사유를 입력하세요, 종이 허가원 처럼"
+                                        placeholder="허가원 사유를 입력하세요, 종이 허가원처럼"
                                         rows={4}
                                         value={reason}
                                         onChange={(e) => setReason(e.target.value)}
@@ -460,9 +464,6 @@ export default function StudentDashboard() {
                                 <FaClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                             </div>
                             <h2 className="text-xl sm:text-2xl font-bold text-black">제출한 허가원</h2>
-                            <div className="ml-auto bg-blue-400 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-bold">
-                                {permissionSlips.length}건
-                            </div>
                         </div>
 
                         {(() => {

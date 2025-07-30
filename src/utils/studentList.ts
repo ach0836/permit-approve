@@ -91,7 +91,7 @@ export const studentList = [
     { name: '이산', studentId: '2115' },
     { name: '이서익', studentId: '2116' },
     { name: '이용후', studentId: '2117' },
-    { name: '임윤열', studentId: '2118' },
+    { name: '이윤열', studentId: '2118' },
     { name: '최민서', studentId: '2119' },
     { name: '허승헌', studentId: '2120' },
 
