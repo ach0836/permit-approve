@@ -231,7 +231,7 @@ export default function AdminDashboard() {
                                                                 <div className="flex-1 min-w-0">
                                                                     <div className="flex items-center gap-3 mb-4">
                                                                         <span className="font-bold text-black text-base sm:text-lg break-keep">{slip.studentName}</span>
-                                                                        <div className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium break-all">{slip.studentEmail}</div>
+                                                                        {/* 이메일 숨김 */}
                                                                         {slip.location && (
                                                                             <div className="px-2 py-1 sm:px-3 sm:py-1 bg-gray-200 text-black rounded-full text-xs sm:text-sm font-medium">📍 {slip.location}</div>
                                                                         )}
@@ -242,11 +242,10 @@ export default function AdminDashboard() {
                                                                     {slip.assignedTeacher && (
                                                                         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
                                                                             <div className="text-sm font-bold text-green-800 mb-2 flex items-center gap-2">
-                                                                                👨‍🏫 담당 선생님
+                                                                                담당 선생님
                                                                             </div>
                                                                             <div className="text-green-700 font-medium">
                                                                                 {TEACHERS.find(t => t.email === slip.assignedTeacher)?.name || '선생님'}
-                                                                                <span className="text-green-600 text-sm ml-2">({slip.assignedTeacher})</span>
                                                                             </div>
                                                                         </div>
                                                                     )}
@@ -254,7 +253,7 @@ export default function AdminDashboard() {
                                                                     {/* 참여 학생 목록 */}
                                                                     {slip.students && slip.students.length > 0 && (
                                                                         <div className="bg-white rounded-lg sm:rounded-xl p-2 sm:p-4 mb-2 sm:mb-4">
-                                                                            <div className="text-xs sm:text-sm font-bold text-black mb-2 sm:mb-3">👥 참여 학생 ({slip.students.length}명)</div>
+                                                                            <div className="text-xs sm:text-sm font-bold text-black mb-2 sm:mb-3">참여 학생 ({slip.students.length}명)</div>
                                                                             <div className="flex flex-wrap gap-1 sm:gap-2">
                                                                                 {slip.students.map((student: { name: string; studentId: string }, index: number) => (
                                                                                     <div key={index} className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-50 text-blue-800 rounded-full text-xs sm:text-sm font-medium">{student.name} ({student.studentId})</div>
@@ -264,7 +263,7 @@ export default function AdminDashboard() {
                                                                     )}
 
                                                                     <div className="bg-white rounded-xl p-4 mb-4">
-                                                                        <div className="text-xs sm:text-sm font-bold text-black mb-1 sm:mb-2">외출 사유</div>
+                                                                        <div className="text-xs sm:text-sm font-bold text-black mb-1 sm:mb-2">사유</div>
                                                                         <p className="text-gray-800 leading-relaxed text-xs sm:text-base break-keep">{slip.reason}</p>
                                                                     </div>
 
@@ -291,54 +290,48 @@ export default function AdminDashboard() {
                 {/* 사용자 관리 탭 */}
                 {activeTab === 'users' && (
                     <div className="bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="p-8">
-                            <div className="flex items-center gap-3 mb-8">
-                                <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-8 h-8 bg-blue-600 rounded-2xl flex items-center justify-center">
                                     <span className="text-white text-lg">👥</span>
                                 </div>
-                                <h2 className="text-2xl font-bold text-black">사용자 관리</h2>
-                                <div className="ml-auto bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold">
+                                <h2 className="text-xl font-bold text-black">사용자 관리</h2>
+                                <div className="ml-auto bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">
                                     {users.length}명
                                 </div>
                             </div>
 
                             {isLoadingUsers ? (
-                                <div className="flex flex-col items-center text-center py-12">
-                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="flex flex-col items-center text-center py-8">
+                                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                        <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-black mb-2">불러오는 중</h3>
-                                    <p className="text-gray-600">사용자 정보를 가져오고 있어요</p>
+                                    <h3 className="text-base font-semibold text-black mb-2">불러오는 중</h3>
+                                    <p className="text-gray-600 text-xs">사용자 정보를 가져오고 있어요</p>
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
-                                    <div className="grid gap-4">
+                                    <div className="grid gap-3">
                                         {users.map((user) => (
-                                            <div key={user.email} className="bg-gray-50 rounded-2xl p-6 hover:bg-gray-100 transition-colors">
+                                            <div key={user.email} className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors">
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-3">
                                                         {user.image && (
-                                                            <div className="w-12 h-12 rounded-2xl overflow-hidden">
+                                                            <div className="w-10 h-10 rounded-2xl overflow-hidden">
                                                                 <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
                                                             </div>
                                                         )}
-                                                        <div>
-                                                            <div className="font-bold text-black text-lg">{user.name}</div>
-                                                            <div className="text-sm text-gray-600 font-medium">{user.email}</div>
-                                                            <div className="text-xs text-gray-500 font-medium mt-1">
-                                                                가입일: {format(user.createdAt, 'yyyy-MM-dd', { locale: ko })}
-                                                            </div>
-                                                        </div>
+                                                        <div className="font-bold text-black text-base">{user.name}</div>
                                                     </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`px-4 py-2 rounded-full text-sm font-bold ${user.role === 'admin' ? 'bg-black text-white' :
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`px-3 py-1 rounded-full text-xs font-bold ${user.role === 'admin' ? 'bg-black text-white' :
                                                             user.role === 'teacher' ? 'bg-blue-600 text-white' :
                                                                 'bg-gray-200 text-black'
                                                             }`}>
                                                             {getRoleText(user.role)}
                                                         </div>
                                                         <select
-                                                            className="px-4 py-2 border-2 border-gray-200 rounded-xl bg-white focus:border-blue-600 transition-all outline-none text-sm font-medium text-black"
+                                                            className="px-3 py-1 border-2 border-gray-200 rounded-xl bg-white focus:border-blue-600 transition-all outline-none text-xs font-medium text-black"
                                                             value={user.role}
                                                             onChange={(e) => handleRoleChange(user.email, e.target.value as UserRole)}
                                                             disabled={updatingUserId === user.email}
@@ -348,7 +341,7 @@ export default function AdminDashboard() {
                                                             <option value="admin">관리자</option>
                                                         </select>
                                                         {updatingUserId === user.email && (
-                                                            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                                                         )}
                                                     </div>
                                                 </div>
