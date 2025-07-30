@@ -139,12 +139,21 @@ export default function AdminDashboard() {
         }
     };
 
-    // 허가원을 상태별로 그룹화
-    const groupedSlips = groupBy(permissionSlips, 'status');
+    // 오늘 날짜 기준 필터링
+    const today = new Date();
+    const isToday = (date: Date) => {
+        return date.getFullYear() === today.getFullYear() &&
+            date.getMonth() === today.getMonth() &&
+            date.getDate() === today.getDate();
+    };
+    // 오늘 허가원만 필터링
+    const todaySlips = permissionSlips.filter(slip => isToday(slip.createdAt));
+    // 상태별 그룹화
+    const groupedSlips = groupBy(todaySlips, 'status');
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+            <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
                 {/* 탭 네비게이션 */}
                 <div className="flex bg-white rounded-xl sm:rounded-2xl p-1 sm:p-2 mb-6 sm:mb-8 border border-gray-200">
                     <button
@@ -183,8 +192,8 @@ export default function AdminDashboard() {
                         ) : (
                             <>
                                 {(['pending', 'approved', 'rejected'] as PermissionSlipStatus[]).map(status => (
-                                    <div key={status} className="bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="p-8">
+                                    <div key={status} className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="p-4 sm:p-8">
                                             <div className="flex items-center gap-3 mb-6">
                                                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${status === 'pending' ? 'bg-gray-100' :
                                                     status === 'approved' ? 'bg-blue-600' : 'bg-black'
@@ -207,28 +216,24 @@ export default function AdminDashboard() {
                                             </div>
 
                                             {!groupedSlips[status] || groupedSlips[status].length === 0 ? (
-                                                <div className="text-center py-12">
-                                                    <div className="w-16 h-16 bg-gray-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                                                        <span className="text-2xl text-gray-400">📋</span>
+                                                <div className="text-center py-8 sm:py-12">
+                                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                                                        <span className="text-xl sm:text-2xl text-gray-400">📋</span>
                                                     </div>
-                                                    <h3 className="text-lg font-bold text-black mb-2">해당하는 허가원이 없습니다</h3>
-                                                    <p className="text-gray-600">새로운 허가원이 제출되면 여기에 표시됩니다.</p>
+                                                    <h3 className="text-base sm:text-lg font-bold text-black mb-2">해당하는 허가원이 없습니다</h3>
+                                                    <p className="text-gray-600 text-xs sm:text-base">오늘 제출된 허가원이 없습니다.</p>
                                                 </div>
                                             ) : (
                                                 <div className="space-y-4">
                                                     {groupedSlips[status].map((slip) => (
-                                                        <div key={slip.id} className="bg-gray-50 rounded-2xl p-6 hover:bg-gray-100 transition-colors">
-                                                            <div className="flex justify-between items-start">
-                                                                <div className="flex-1">
+                                                        <div key={slip.id} className="bg-gray-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:bg-gray-100 transition-colors">
+                                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
+                                                                <div className="flex-1 min-w-0">
                                                                     <div className="flex items-center gap-3 mb-4">
-                                                                        <span className="font-bold text-black text-lg">{slip.studentName}</span>
-                                                                        <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                                                            {slip.studentEmail}
-                                                                        </div>
+                                                                        <span className="font-bold text-black text-base sm:text-lg break-keep">{slip.studentName}</span>
+                                                                        <div className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium break-all">{slip.studentEmail}</div>
                                                                         {slip.location && (
-                                                                            <div className="px-3 py-1 bg-gray-200 text-black rounded-full text-sm font-medium">
-                                                                                📍 {slip.location}
-                                                                            </div>
+                                                                            <div className="px-2 py-1 sm:px-3 sm:py-1 bg-gray-200 text-black rounded-full text-xs sm:text-sm font-medium">📍 {slip.location}</div>
                                                                         )}
                                                                         {getStatusBadge(slip.status)}
                                                                     </div>
@@ -248,29 +253,25 @@ export default function AdminDashboard() {
 
                                                                     {/* 참여 학생 목록 */}
                                                                     {slip.students && slip.students.length > 0 && (
-                                                                        <div className="bg-white rounded-xl p-4 mb-4">
-                                                                            <div className="text-sm font-bold text-black mb-3">
-                                                                                👥 참여 학생 ({slip.students.length}명)
-                                                                            </div>
-                                                                            <div className="flex flex-wrap gap-2">
+                                                                        <div className="bg-white rounded-lg sm:rounded-xl p-2 sm:p-4 mb-2 sm:mb-4">
+                                                                            <div className="text-xs sm:text-sm font-bold text-black mb-2 sm:mb-3">👥 참여 학생 ({slip.students.length}명)</div>
+                                                                            <div className="flex flex-wrap gap-1 sm:gap-2">
                                                                                 {slip.students.map((student: { name: string; studentId: string }, index: number) => (
-                                                                                    <div key={index} className="px-3 py-1 bg-blue-50 text-blue-800 rounded-full text-sm font-medium">
-                                                                                        {student.name} ({student.studentId})
-                                                                                    </div>
+                                                                                    <div key={index} className="px-2 py-1 sm:px-3 sm:py-1 bg-blue-50 text-blue-800 rounded-full text-xs sm:text-sm font-medium">{student.name} ({student.studentId})</div>
                                                                                 ))}
                                                                             </div>
                                                                         </div>
                                                                     )}
 
                                                                     <div className="bg-white rounded-xl p-4 mb-4">
-                                                                        <div className="text-sm font-bold text-black mb-2">외출 사유</div>
-                                                                        <p className="text-gray-800 leading-relaxed">{slip.reason}</p>
+                                                                        <div className="text-xs sm:text-sm font-bold text-black mb-1 sm:mb-2">외출 사유</div>
+                                                                        <p className="text-gray-800 leading-relaxed text-xs sm:text-base break-keep">{slip.reason}</p>
                                                                     </div>
 
                                                                     <div className="text-sm text-gray-600 font-medium space-y-1">
-                                                                        <p>제출일: {format(slip.createdAt, 'yyyy년 MM월 dd일 HH:mm', { locale: ko })}</p>
+                                                                        <p className="text-xs sm:text-sm">제출일: {format(slip.createdAt, 'yyyy년 MM월 dd일 HH:mm', { locale: ko })}</p>
                                                                         {slip.processedBy && (
-                                                                            <p>처리: {slip.processedBy.name} ({format(slip.processedBy.processedAt, 'yyyy년 MM월 dd일 HH:mm', { locale: ko })})</p>
+                                                                            <p className="text-xs sm:text-sm">처리: {slip.processedBy.name} ({format(slip.processedBy.processedAt, 'yyyy년 MM월 dd일 HH:mm', { locale: ko })})</p>
                                                                         )}
                                                                     </div>
                                                                 </div>
