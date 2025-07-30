@@ -24,7 +24,8 @@ export default function Toast({ message, type = "info", onClose, duration = 2500
 
     return (
         <div
-            className={`fixed z-50 bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded shadow-lg flex items-center gap-2 ${bg} ${text}`}
+            className={`fixed z-50 bottom-4 left-1/2 -translate-x-1/2 w-[90vw] max-w-xs sm:max-w-md px-4 sm:px-6 py-3 sm:py-4 rounded-xl shadow-lg flex items-center gap-2 text-sm sm:text-base font-medium ${bg} ${text}`}
+            style={{ wordBreak: 'keep-all', textAlign: 'center' }}
             role="alert"
         >
             {message}
