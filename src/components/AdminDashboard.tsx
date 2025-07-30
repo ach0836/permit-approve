@@ -58,7 +58,7 @@ export default function AdminDashboard() {
 
         setLoading(true);
         try {
-            // 관리자는 모든 허가원을 볼 수 있도록 파라미터 추가
+            // 관리자만 모든 허가원을 볼 수 있도록 파라미터 추가
             const params = new URLSearchParams();
             params.append('userEmail', user.email);
             params.append('userRole', user.role);
@@ -73,7 +73,7 @@ export default function AdminDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [setPermissionSlips, setLoading]); // user 의존성 제거
+    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
 
     const fetchUsers = useCallback(async () => {
         setIsLoadingUsers(true);
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
         if (activeTab === 'users') {
             fetchUsers();
         }
-    }, [activeTab, user?.email, user?.role]); // fetchPermissionSlips와 fetchUsers 의존성 제거
+    }, [activeTab, user?.email, user?.role, fetchPermissionSlips, fetchUsers]);
 
     const handleRoleChange = async (email: string, newRole: UserRole) => {
         setUpdatingUserId(email);
