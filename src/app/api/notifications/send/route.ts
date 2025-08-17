@@ -64,23 +64,23 @@ export async function POST(request: NextRequest) {
 
         console.log('[FCM API] Found token for user, sending message...');
 
-        // FCM 메시지 구성 (단순화된 구조)
+        // FCM 메시지 구성 - data 메시지만 사용 (중복 알림 방지)
         const message = {
-            notification: {
-                title,
-                body,
-            },
             data: {
                 title,
                 body,
                 type: 'permit-notification',
                 url: '/dashboard',
+                icon: '/icons/icon-192x192.png',
                 ...(data || {})
             },
             token: fcmToken,
-            webpush: {
-                fcmOptions: {
-                    link: '/dashboard'
+            android: {
+                priority: 'high' as const
+            },
+            apns: {
+                headers: {
+                    'apns-priority': '10'
                 }
             }
         };

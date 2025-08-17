@@ -63,12 +63,22 @@ function NotificationManagerContent() {
                 // 포그라운드 메시지 리스너 설정 (한 번만)
                 setupForegroundMessageListener((payload: MessagePayload) => {
                     console.log('📨 [NotificationManager] Foreground message received:', payload);
-                    setNotification({
-                        show: true,
-                        title: payload.notification?.title || payload.data?.title || '새 알림',
-                        body: payload.notification?.body || payload.data?.body || '새로운 메시지가 있습니다',
-                        data: payload.data
-                    });
+
+                    // 페이지가 백그라운드 상태면 알림을 표시하지 않음 (서비스 워커가 처리)
+                    if (document.visibilityState === 'hidden') {
+                        console.log('📨 [NotificationManager] Page is hidden, skipping foreground notification');
+                        return;
+                    }
+
+                    // data 메시지만 처리 (notification이 있으면 FCM이 자동 처리하므로 중복 방지)
+                    if (payload.data) {
+                        setNotification({
+                            show: true,
+                            title: payload.data?.title || '새 알림',
+                            body: payload.data?.body || '새로운 메시지가 있습니다',
+                            data: payload.data
+                        });
+                    }
                 });
 
                 setFcmInitialized(true);

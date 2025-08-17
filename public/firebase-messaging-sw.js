@@ -16,37 +16,39 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// 백그라운드 메시지 처리
+// 백그라운드 메시지 처리 - data 메시지만 처리
 messaging.onBackgroundMessage(function (payload) {
     console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
-    const notificationTitle = payload.notification?.title || payload.data?.title || '허가원 알림';
-    const notificationBody = payload.notification?.body || payload.data?.body || '새로운 알림이 있습니다.';
+    // notification 객체가 있으면 FCM이 자동으로 처리하므로 여기서는 data만 처리
+    if (payload.data) {
+        const { title, body, icon, url } = payload.data;
 
-    // 고유한 태그로 중복 알림 방지
-    const notificationTag = payload.data?.id || `permit-${Date.now()}`;
+        // 고유한 태그로 중복 알림 방지
+        const notificationTag = payload.data?.id || `permit-${Date.now()}`;
 
-    const notificationOptions = {
-        body: notificationBody,
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-192x192.png',
-        tag: notificationTag, // 중복 방지를 위한 고유 태그
-        data: payload.data,
-        requireInteraction: true,
-        renotify: false, // 같은 태그의 알림이 있어도 다시 알리지 않음
-        actions: [
-            {
-                action: 'view',
-                title: '확인하기'
-            },
-            {
-                action: 'dismiss',
-                title: '닫기'
-            }
-        ]
-    };
+        const notificationOptions = {
+            body: body || '새로운 알림이 있습니다.',
+            icon: icon || '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            tag: notificationTag,
+            data: { url: url || '/dashboard' },
+            requireInteraction: true,
+            renotify: false,
+            actions: [
+                {
+                    action: 'view',
+                    title: '확인하기'
+                },
+                {
+                    action: 'dismiss',
+                    title: '닫기'
+                }
+            ]
+        };
 
-    self.registration.showNotification(notificationTitle, notificationOptions);
+        self.registration.showNotification(title || '허가원 알림', notificationOptions);
+    }
 });
 
 // 알림 클릭 이벤트 처리

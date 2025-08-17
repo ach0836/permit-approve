@@ -136,6 +136,13 @@ export const setupForegroundMessageListener = (onMessageReceived: (payload: Mess
 
     onMessage(messaging, (payload: MessagePayload) => {
         console.log('[FCM] Foreground message received:', payload);
+
+        // 페이지가 백그라운드 상태인지 확인
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            console.log('[FCM] Page is hidden, letting service worker handle notification');
+            return;
+        }
+
         onMessageReceived(payload);
     });
 
