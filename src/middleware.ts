@@ -29,19 +29,61 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // 캐시 헤더 설정
+    // 보안 헤더 및 캐시 설정
     const response = NextResponse.next();
 
-    // 정적 리소스에 대한 캐시 설정
+    // 보안 헤더 추가
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+    // HTTPS 강제 (프로덕션)
+    if (process.env.NODE_ENV === 'production') {
+        response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+
+    // CSP 설정 (보안 강화)
+    const csp = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://www.google.com https://accounts.google.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: https: blob:",
+        "connect-src 'self' https://fcm.googleapis.com https://firebaseinstallations.googleapis.com https://firebase.googleapis.com",
+        "worker-src 'self'",
+        "manifest-src 'self'",
+        "frame-src https://accounts.google.com"
+    ].join('; ');
+
+    // 개발 환경에서는 느슨한 CSP 적용
+    if (process.env.NODE_ENV === 'development') {
+        response.headers.set('Content-Security-Policy-Report-Only', csp);
+    } else {
+        response.headers.set('Content-Security-Policy', csp);
+    }
+
+    // 캐시 헤더 설정
     if (pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) {
         response.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     }
 
-    // API 라우트 캐시 설정
+    // API 라우트 보안 및 캐시 설정
     if (pathname.startsWith('/api/')) {
         response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
         response.headers.set('Pragma', 'no-cache');
         response.headers.set('Expires', '0');
+
+        // API 요청에 대한 추가 보안 헤더
+        response.headers.set('X-API-Version', '1.0');
+
+        // 민감한 API 경로 보호
+        if (pathname.startsWith('/api/notifications/send') && !token) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
     }
 
     return response;

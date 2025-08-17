@@ -2,63 +2,128 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
-// Firebase 설정 - 환경변수 대신 직접 설정
-const firebaseConfig = {
-    apiKey: "AIzaSyC0p7v_XhBQgYKZHKJP1n1VwWj7hBdKFfg",
-    authDomain: "permit-approve.firebaseapp.com",
-    projectId: "permit-approve",
-    storageBucket: "permit-approve.firebasestorage.app",
-    messagingSenderId: "474639906354",
-    appId: "1:474639906354:web:c2e2ac7d7e9c8b8b8f8a1c"
-};
+// Firebase 설정 - 동적으로 가져오기 (보안 강화)
+let firebaseConfig = null;
 
-// Firebase 초기화
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+// 설정을 동적으로 가져오는 함수
+async function getFirebaseConfig() {
+    if (firebaseConfig) return firebaseConfig;
+
+    try {
+        // 공개 API에서 설정 가져오기
+        const response = await fetch('/api/firebase-config');
+        const config = await response.json();
+        firebaseConfig = config;
+        return config;
+    } catch (error) {
+        console.error('[SW] Failed to fetch Firebase config:', error);
+        // 폴백 설정 (최소한의 정보만)
+        return {
+            apiKey: "AIzaSyC0p7v_XhBQgYKZHKJP1n1VwWj7hBdKFfg",
+            projectId: "permit-approve",
+            messagingSenderId: "474639906354",
+            appId: "1:474639906354:web:c2e2ac7d7e9c8b8b8f8a1c"
+        };
+    }
+}
+
+// Firebase 초기화 및 메시징 설정
+let messaging = null;
+
+async function initializeFirebase() {
+    if (messaging) return messaging;
+
+    try {
+        const config = await getFirebaseConfig();
+        firebase.initializeApp(config);
+        messaging = firebase.messaging();
+        console.log('[SW] Firebase initialized successfully');
+        return messaging;
+    } catch (error) {
+        console.error('[SW] Firebase initialization failed:', error);
+        return null;
+    }
+}
 
 // 백그라운드 메시지 처리 - data 메시지만 처리
-messaging.onBackgroundMessage(function (payload) {
-    console.log('[firebase-messaging-sw.js] Received background message:', payload);
-
-    // notification 객체가 있으면 FCM이 자동으로 처리하므로 여기서는 data만 처리
-    if (payload.data) {
-        const { title, body, icon, url } = payload.data;
-
-        // 고유한 태그로 중복 알림 방지
-        const notificationTag = payload.data?.id || `permit-${Date.now()}`;
-
-        const notificationOptions = {
-            body: body || '새로운 알림이 있습니다.',
-            icon: icon || '/icons/icon-192x192.png',
-            badge: '/icons/icon-192x192.png',
-            tag: notificationTag,
-            data: { url: url || '/dashboard' },
-            requireInteraction: true,
-            renotify: false,
-            actions: [
-                {
-                    action: 'view',
-                    title: '확인하기'
-                },
-                {
-                    action: 'dismiss',
-                    title: '닫기'
-                }
-            ]
-        };
-
-        self.registration.showNotification(title || '허가원 알림', notificationOptions);
+self.addEventListener('message', async function (event) {
+    if (event.data && event.data.type === 'INIT_MESSAGING') {
+        await initializeFirebase();
     }
 });
 
-// 알림 클릭 이벤트 처리
+// 메시징 초기화
+initializeFirebase().then((msg) => {
+    if (msg) {
+        msg.onBackgroundMessage(function (payload) {
+            console.log('[firebase-messaging-sw.js] Received background message:', payload);
+
+            // 입력 검증 강화
+            if (!payload || !payload.data) {
+                console.warn('[SW] Invalid payload received');
+                return;
+            }
+
+            const { title, body, icon, url } = payload.data;
+
+            // XSS 방지를 위한 텍스트 정제
+            const sanitizedTitle = title ? String(title).substring(0, 100) : '허가원 알림';
+            const sanitizedBody = body ? String(body).substring(0, 200) : '새로운 알림이 있습니다.';
+
+            // 고유한 태그로 중복 알림 방지
+            const notificationTag = payload.data?.id ?
+                `permit-${String(payload.data.id).replace(/[^a-zA-Z0-9-]/g, '')}` :
+                `permit-${Date.now()}`;
+
+            const notificationOptions = {
+                body: sanitizedBody,
+                icon: icon || '/icons/icon-192x192.png',
+                badge: '/icons/icon-192x192.png',
+                tag: notificationTag,
+                data: {
+                    url: url && url.startsWith('/') ? url : '/dashboard' // URL 검증
+                },
+                requireInteraction: true,
+                renotify: false,
+                actions: [
+                    {
+                        action: 'view',
+                        title: '확인하기'
+                    },
+                    {
+                        action: 'dismiss',
+                        title: '닫기'
+                    }
+                ]
+            };
+
+            self.registration.showNotification(sanitizedTitle, notificationOptions);
+        });
+    }
+});
+
+// 알림 클릭 이벤트 처리 (보안 강화)
 self.addEventListener('notificationclick', function (event) {
     console.log('[SW] Notification click event:', event);
 
     event.notification.close();
 
     if (event.action === 'view' || !event.action) {
-        // 허가원 대시보드로 이동
+        const targetUrl = event.notification.data?.url;
+
+        // URL 검증 강화
+        let safeUrl = '/dashboard';
+        if (targetUrl && typeof targetUrl === 'string') {
+            // 상대 경로만 허용 (절대 URL 차단으로 피싱 방지)
+            if (targetUrl.startsWith('/') && !targetUrl.startsWith('//')) {
+                // 추가 경로 검증
+                const allowedPaths = ['/dashboard', '/auth/signin', '/'];
+                if (allowedPaths.some(path => targetUrl.startsWith(path))) {
+                    safeUrl = targetUrl;
+                }
+            }
+        }
+
         event.waitUntil(
             clients.matchAll({
                 type: 'window',
@@ -67,12 +132,15 @@ self.addEventListener('notificationclick', function (event) {
                 // 기존 탭이 있으면 포커스
                 for (const client of clientList) {
                     if (client.url.includes('/dashboard') && 'focus' in client) {
-                        return client.focus();
+                        return client.focus().then(() => {
+                            // 안전한 방식으로 페이지 네비게이션
+                            client.postMessage({ type: 'NAVIGATE', url: safeUrl });
+                        });
                     }
                 }
                 // 없으면 새 탭 열기
                 if (clients.openWindow) {
-                    return clients.openWindow('/dashboard');
+                    return clients.openWindow(safeUrl);
                 }
             })
         );

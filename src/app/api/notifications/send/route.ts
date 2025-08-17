@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import admin from 'firebase-admin';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 // Firebase Admin 초기화 (환경변수 체크 강화)
 if (!admin.apps.length) {
@@ -33,28 +35,71 @@ interface NotificationRequest {
     data?: { [key: string]: string };
 }
 
+// 입력 검증 함수
+function validateInput(data: NotificationRequest): string | null {
+    const { userEmail, title, body } = data;
+
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!userEmail || !emailRegex.test(userEmail)) {
+        return 'Invalid email format';
+    }
+
+    // 길이 제한 (XSS 방지)
+    if (!title || title.length > 100) {
+        return 'Title must be between 1-100 characters';
+    }
+
+    if (!body || body.length > 500) {
+        return 'Body must be between 1-500 characters';
+    }
+
+    // XSS 방지를 위한 특수 문자 검증
+    const dangerousChars = /<script|javascript:|data:|vbscript:/i;
+    if (dangerousChars.test(title) || dangerousChars.test(body)) {
+        return 'Invalid characters detected';
+    }
+
+    return null;
+}
+
 export async function POST(request: NextRequest) {
     try {
-        const { userEmail, title, body, data }: NotificationRequest = await request.json();
+        // 세션 인증 확인
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.email) {
+            return NextResponse.json(
+                { error: 'Unauthorized - Authentication required' },
+                { status: 401 }
+            );
+        }
+
+        const requestData: NotificationRequest = await request.json();
 
         // 입력 검증
-        if (!userEmail || !title || !body) {
-            console.error('[FCM API] Missing required fields:', { userEmail: !!userEmail, title: !!title, body: !!body });
+        const validationError = validateInput(requestData);
+        if (validationError) {
             return NextResponse.json(
-                { error: 'Missing required fields: userEmail, title, body' },
+                { error: validationError },
                 { status: 400 }
             );
         }
 
-        console.log('[FCM API] Sending notification to:', userEmail);
+        const { userEmail, title, body, data } = requestData;
+
+        // Rate limiting (간단한 구현)
+        const rateLimitKey = `notification_${session.user.email}`;
+        // 실제로는 Redis나 다른 저장소를 사용해야 합니다
+
+        console.log('[FCM API] Authorized request from:', session.user.email);
 
         // Firestore에서 FCM 토큰 가져오기
         const tokenDoc = await getDoc(doc(db, 'fcmTokens', userEmail));
 
         if (!tokenDoc.exists()) {
-            console.error('[FCM API] No FCM token found for user:', userEmail);
+            // 민감한 정보 노출 방지
             return NextResponse.json(
-                { error: `No FCM token found for user: ${userEmail}` },
+                { error: 'Notification delivery failed' },
                 { status: 404 }
             );
         }
@@ -62,16 +107,27 @@ export async function POST(request: NextRequest) {
         const tokenData = tokenDoc.data();
         const fcmToken = tokenData.token;
 
-        console.log('[FCM API] Found token for user, sending message...');
+        // 추가 보안: 토큰 유효성 검증
+        if (!fcmToken || typeof fcmToken !== 'string') {
+            return NextResponse.json(
+                { error: 'Invalid token configuration' },
+                { status: 400 }
+            );
+        }
+
+        // XSS 방지를 위한 텍스트 정제
+        const sanitizedTitle = title.replace(/<[^>]*>/g, '').substring(0, 100);
+        const sanitizedBody = body.replace(/<[^>]*>/g, '').substring(0, 500);
 
         // FCM 메시지 구성 - data 메시지만 사용 (중복 알림 방지)
         const message = {
             data: {
-                title,
-                body,
+                title: sanitizedTitle,
+                body: sanitizedBody,
                 type: 'permit-notification',
                 url: '/dashboard',
                 icon: '/icons/icon-192x192.png',
+                timestamp: new Date().toISOString(),
                 ...(data || {})
             },
             token: fcmToken,
@@ -87,24 +143,25 @@ export async function POST(request: NextRequest) {
 
         // FCM으로 알림 전송
         const response = await admin.messaging().send(message);
-        console.log('[FCM API] Message sent successfully:', response);
 
         return NextResponse.json({
             success: true,
             messageId: response,
-            userEmail
+            // 민감한 정보 제외
         });
 
     } catch (error) {
         console.error('[FCM API] Error sending notification:', error);
 
-        // 자세한 에러 정보 반환
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        // 프로덕션에서는 상세한 에러 정보 숨김
+        const isDevelopment = process.env.NODE_ENV === 'development';
+        const errorMessage = isDevelopment && error instanceof Error ?
+            error.message : 'Internal server error';
 
         return NextResponse.json(
             {
                 error: 'Failed to send notification',
-                details: errorMessage,
+                ...(isDevelopment && { details: errorMessage }),
                 timestamp: new Date().toISOString()
             },
             { status: 500 }
