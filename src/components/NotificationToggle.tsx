@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { useAuthStore } from '@/store';
 import { requestFCMToken } from '@/utils/fcm';
 import { FaBell, FaBellSlash, FaSpinner } from 'react-icons/fa';
+import { logger } from '@/utils/logger';
+import { ErrorCodes, getUserFriendlyMessage, reportError, createError } from '@/utils/errorHandler';
 
 interface NotificationToggleProps {
     onPermissionChange?: (granted: boolean) => void;
@@ -11,7 +13,11 @@ interface NotificationToggleProps {
     isMobile?: boolean;
 }
 
-export default function NotificationToggle({ onPermissionChange, className = '', isMobile = false }: NotificationToggleProps) {
+const NotificationToggle = memo(function NotificationToggle({
+    onPermissionChange,
+    className = '',
+    isMobile = false
+}: NotificationToggleProps) {
     const { user } = useAuthStore();
     const [permissionStatus, setPermissionStatus] = useState<'default' | 'granted' | 'denied'>('default');
     const [isLoading, setIsLoading] = useState(false);
@@ -23,33 +29,46 @@ export default function NotificationToggle({ onPermissionChange, className = '',
         }
     }, []);
 
-    // FCM 초기화 함수
-    const initializeFCM = async () => {
+    // FCM 초기화 함수 (useCallback으로 최적화)
+    const initializeFCM = useCallback(async () => {
         if (!user?.email || !user?.role) {
-            console.log('❌ [NotificationToggle] User email or role missing for FCM initialization');
+            const error = createError(
+                ErrorCodes.FCM_INIT_FAILED,
+                'User email or role missing for FCM initialization',
+                '사용자 정보가 없어 알림을 설정할 수 없습니다.'
+            );
+            reportError(error);
             return;
         }
 
         try {
-            console.log('🚀 [NotificationToggle] Initializing FCM after permission granted');
+            logger.fcm.log('Initializing FCM after permission granted');
             const token = await requestFCMToken(user.email, user.role);
             if (token) {
-                console.log('✅ [NotificationToggle] FCM token obtained successfully');
+                logger.fcm.log('FCM token obtained successfully');
             }
         } catch (error) {
-            console.error('❌ [NotificationToggle] FCM initialization failed:', error);
+            const appError = createError(
+                ErrorCodes.FCM_INIT_FAILED,
+                'FCM initialization failed',
+                '알림 설정 중 문제가 발생했습니다.',
+                error
+            );
+            reportError(appError);
         }
-    };
+    }, [user?.email, user?.role]);
 
-    // 알림 권한 토글
-    const handleToggle = async () => {
+    // 알림 권한 토글 (useCallback으로 최적화)
+    const handleToggle = useCallback(async () => {
         if (!('Notification' in window)) {
-            alert('이 브라우저는 알림을 지원하지 않습니다.');
+            const message = getUserFriendlyMessage(ErrorCodes.FCM_NOT_SUPPORTED);
+            alert(message);
             return;
         }
 
         if (permissionStatus === 'denied') {
-            alert('알림 권한이 차단되었습니다. 브라우저 설정에서 수동으로 허용해주세요.');
+            const message = getUserFriendlyMessage(ErrorCodes.FCM_PERMISSION_DENIED);
+            alert(message);
             return;
         }
 
@@ -64,19 +83,25 @@ export default function NotificationToggle({ onPermissionChange, className = '',
             setPermissionStatus(permission);
 
             if (permission === 'granted') {
-                // FCM 초기화
                 await initializeFCM();
             }
 
             onPermissionChange?.(permission === 'granted');
         } catch (error) {
-            console.error('알림 권한 요청 중 오류:', error);
+            const appError = createError(
+                ErrorCodes.FCM_PERMISSION_DENIED,
+                'Notification permission request failed',
+                '알림 권한 요청 중 오류가 발생했습니다.',
+                error
+            );
+            reportError(appError);
+            alert(appError.userMessage);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [permissionStatus, initializeFCM, onPermissionChange]);
 
-    const getButtonConfig = () => {
+    const getButtonConfig = useCallback(() => {
         const baseConfig = {
             granted: {
                 icon: FaBell,
@@ -102,7 +127,7 @@ export default function NotificationToggle({ onPermissionChange, className = '',
         };
 
         return baseConfig[permissionStatus];
-    };
+    }, [permissionStatus]);
 
     const config = getButtonConfig();
     const IconComponent = config.icon;
@@ -119,6 +144,7 @@ export default function NotificationToggle({ onPermissionChange, className = '',
             onClick={handleToggle}
             disabled={isLoading}
             className={`${buttonStyle} ${className}`}
+            aria-label={isMobile ? config.text : undefined}
         >
             {isLoading ? (
                 <FaSpinner className={`${iconSize} animate-spin`} />
@@ -128,4 +154,6 @@ export default function NotificationToggle({ onPermissionChange, className = '',
             {!isMobile && <span>{config.text}</span>}
         </button>
     );
-}
+});
+
+export default NotificationToggle;
