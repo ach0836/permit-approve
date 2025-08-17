@@ -10,6 +10,14 @@ export interface FCMTokenData {
     updatedAt: Date;
 }
 
+interface MessagePayload {
+    notification?: {
+        title?: string;
+        body?: string;
+    };
+    data?: Record<string, string>;
+}
+
 // 서비스 워커 등록
 const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
     try {
@@ -102,13 +110,13 @@ export const saveFCMToken = async (token: string, userEmail: string, userRole: s
 };
 
 // 포그라운드 메시지 리스너 설정
-export const setupForegroundMessageListener = (onMessageReceived: (payload: any) => void): void => {
+export const setupForegroundMessageListener = (onMessageReceived: (payload: MessagePayload) => void): void => {
     if (!messaging) {
         console.log('[FCM] Messaging not available for foreground listener');
         return;
     }
 
-    onMessage(messaging, (payload) => {
+    onMessage(messaging, (payload: MessagePayload) => {
         console.log('[FCM] Foreground message received:', payload);
         onMessageReceived(payload);
     });

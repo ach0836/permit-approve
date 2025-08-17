@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { usePermissionSlipStore, useAuthStore } from '@/store';
-import { TEACHERS, LOCATIONS } from '@/types';
+import { User, TEACHERS, LOCATIONS } from '@/types';
 import type { PermissionSlip } from '@/types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -41,13 +41,13 @@ export default function TeacherDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [setPermissionSlips, setLoading]); // user 의존성 제거
+    }, [setPermissionSlips, setLoading, user?.email, user?.role]);
 
     useEffect(() => {
         if (user?.email && user?.role) {
             fetchPermissionSlips();
         }
-    }, [user?.email, user?.role]); // 사용자 정보가 변경될 때만 호출
+    }, [user?.email, user?.role, fetchPermissionSlips]);
 
     const handleStatusChange = async (id: string, status: 'approved' | 'rejected') => {
         setProcessingId(id);

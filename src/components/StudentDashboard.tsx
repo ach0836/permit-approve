@@ -82,7 +82,7 @@ export default function StudentDashboard() {
         localStorage.setItem('studentDashboard_reason', reason);
         localStorage.setItem('studentDashboard_teacher', assignedTeacher);
         localStorage.setItem('studentDashboard_periods', JSON.stringify(selectedPeriods));
-    }, [selectedLocation, students, reason, assignedTeacher]);
+    }, [selectedLocation, students, reason, assignedTeacher, selectedPeriods]);
 
     const fetchPermissionSlips = useCallback(async () => {
         if (!user?.email || !user?.role) return;
@@ -110,7 +110,7 @@ export default function StudentDashboard() {
         if (user?.email && user?.role) {
             fetchPermissionSlips();
         }
-    }, [fetchPermissionSlips]);
+    }, [fetchPermissionSlips, user?.email, user?.role]);
 
     const addStudent = () => {
         if (students.length < 20) {

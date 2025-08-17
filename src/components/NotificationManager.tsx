@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuthStore } from '@/store';
 import { requestFCMToken, setupForegroundMessageListener, checkFCMSupport } from '@/utils/fcm';
 import { FaBell, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
@@ -10,7 +10,7 @@ interface NotificationState {
     show: boolean;
     title: string;
     body: string;
-    data?: any;
+    data?: Record<string, unknown>;
 }
 
 function NotificationManagerContent() {
@@ -47,14 +47,7 @@ function NotificationManagerContent() {
         }
     }, [user]);
 
-    useEffect(() => {
-        if (!user?.email || !user?.role || fcmInitialized) return;
-
-        console.log('[NotificationManager] Initializing FCM for user:', user.email);
-        initializeFCM();
-    }, [user, fcmInitialized]);
-
-    const initializeFCM = async () => {
+    const initializeFCM = useCallback(async () => {
         try {
             setFcmError(null);
             console.log('[NotificationManager] Starting FCM initialization...');
@@ -85,7 +78,14 @@ function NotificationManagerContent() {
             console.error('[NotificationManager] FCM initialization error:', error);
             setFcmError('알림 초기화 중 오류가 발생했습니다.');
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (!user?.email || !user?.role || fcmInitialized) return;
+
+        console.log('[NotificationManager] Initializing FCM for user:', user.email);
+        initializeFCM();
+    }, [user, fcmInitialized, initializeFCM]);
 
     const handleNotificationPermission = async () => {
         try {

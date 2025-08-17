@@ -26,7 +26,7 @@ export default function SessionProvider({ children }: SessionProviderProps) {
             authStore.loadUserFromStorage();
             hasLoadedFromStorage.current = true;
         }
-    }, []);
+    }, [authStore]);
 
     // 컴포넌트 마운트 시 로컬 스토리지에서 사용자 정보 로드 (한 번만)
     useEffect(() => {
@@ -67,7 +67,7 @@ export default function SessionProvider({ children }: SessionProviderProps) {
             lastSessionRef.current = null;
             // 로그아웃이 아닌 경우 로컬 스토리지 데이터 유지
         }
-    }, [sessionEmail, sessionName, sessionImage, status, authStore]);
+    }, [sessionEmail, sessionName, sessionImage, status, authStore, session?.user?.role]);
 
     return <>{children}</>;
 }
