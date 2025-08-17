@@ -38,7 +38,7 @@ const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null
     }
 };
 
-// FCM 토큰 요청 및 등록
+// FCM 토큰 요청 및 등록 (권한이 이미 승인된 상태에서만 호출)
 export const requestFCMToken = async (userEmail: string, userRole: string): Promise<string | null> => {
     try {
         // 브라우저 지원 확인
@@ -47,19 +47,16 @@ export const requestFCMToken = async (userEmail: string, userRole: string): Prom
             return null;
         }
 
+        // 권한이 이미 승인되었는지 확인
+        if (Notification.permission !== 'granted') {
+            console.log('[FCM] Notification permission not granted');
+            return null;
+        }
+
         // 서비스 워커 등록
         const registration = await registerServiceWorker();
         if (!registration) {
             console.error('[FCM] Failed to register service worker');
-            return null;
-        }
-
-        // 알림 권한 요청
-        const permission = await Notification.requestPermission();
-        console.log('[FCM] Notification permission:', permission);
-
-        if (permission !== 'granted') {
-            console.log('[FCM] Notification permission denied');
             return null;
         }
 
@@ -136,14 +133,4 @@ export const getFCMToken = async (userEmail: string): Promise<string | null> => 
         console.error('[FCM] Error getting FCM token from Firestore:', error);
         return null;
     }
-};
-
-// FCM 초기화 확인
-export const checkFCMSupport = (): boolean => {
-    if (typeof window === 'undefined') return false;
-    if (!('serviceWorker' in navigator)) return false;
-    if (!('Notification' in window)) return false;
-    if (!messaging) return false;
-
-    return true;
 };
