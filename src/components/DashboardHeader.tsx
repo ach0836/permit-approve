@@ -116,12 +116,7 @@ export default function DashboardHeader() {
                         </div>
 
                         {/* 모바일용 사용자 정보 */}
-                        <div className="sm:hidden flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
-                            {user.image && (
-                                <div className="w-8 h-8 rounded-xl overflow-hidden bg-gray-100">
-                                    <img src={user.image} alt={user.name || '사용자'} className="w-full h-full object-cover" />
-                                </div>
-                            )}
+                        <div className="sm:hidden flex items-center bg-gray-50 rounded-xl px-3 py-2 border border-gray-200">
                             <div className="flex flex-col">
                                 <span className="font-bold text-sm text-black truncate max-w-20">{user.name}</span>
                                 <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
