@@ -29,10 +29,18 @@ function NotificationManagerContent() {
         body: ''
     });
     const [fcmInitialized, setFcmInitialized] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(false);
 
     // FCM 초기화 함수
     const initializeFCM = useCallback(async () => {
+        // 이미 초기화 중이거나 완료되었으면 건너뜀
+        if (isInitializing || fcmInitialized) {
+            console.log('🔄 [NotificationManager] FCM initialization already in progress or completed');
+            return;
+        }
+
         try {
+            setIsInitializing(true);
             console.log('🚀 [NotificationManager] Starting FCM initialization...');
 
             if (!user?.email || !user?.role) {
@@ -51,9 +59,8 @@ function NotificationManagerContent() {
 
             if (token) {
                 console.log('✅ [NotificationManager] FCM token obtained successfully');
-                setFcmInitialized(true);
 
-                // 포그라운드 메시지 리스너 설정
+                // 포그라운드 메시지 리스너 설정 (한 번만)
                 setupForegroundMessageListener((payload: MessagePayload) => {
                     console.log('📨 [NotificationManager] Foreground message received:', payload);
                     setNotification({
@@ -63,13 +70,17 @@ function NotificationManagerContent() {
                         data: payload.data
                     });
                 });
+
+                setFcmInitialized(true);
             } else {
                 console.log('❌ [NotificationManager] Failed to get FCM token');
             }
         } catch (error) {
             console.error('❌ [NotificationManager] FCM initialization error:', error);
+        } finally {
+            setIsInitializing(false);
         }
-    }, [user]);
+    }, [user, isInitializing, fcmInitialized]);
 
     // 권한 상태 모니터링 및 FCM 초기화
     useEffect(() => {
@@ -86,11 +97,11 @@ function NotificationManagerContent() {
         }
 
         // 권한이 승인되어 있고 FCM이 아직 초기화되지 않았으면 초기화
-        if (Notification.permission === 'granted' && !fcmInitialized) {
+        if (Notification.permission === 'granted' && !fcmInitialized && !isInitializing) {
             console.log('✅ [NotificationManager] Permission granted, initializing FCM');
             initializeFCM();
         }
-    }, [user?.email, fcmInitialized, initializeFCM]);
+    }, [user?.email, fcmInitialized, isInitializing, initializeFCM]);
 
     // 알림 닫기
     const closeNotification = () => {
@@ -137,6 +148,7 @@ function NotificationManagerContent() {
                     <div>- 브라우저 지원: {'Notification' in window && 'serviceWorker' in navigator ? '✅' : '❌'}</div>
                     <div>- 권한: {'Notification' in window ? Notification.permission : 'unknown'}</div>
                     <div>- FCM 초기화: {fcmInitialized ? '✅' : '❌'}</div>
+                    <div>- 초기화 중: {isInitializing ? '🔄' : '⏹️'}</div>
                     <div>- 사용자: {user?.email || '없음'}</div>
                 </div>
             )}

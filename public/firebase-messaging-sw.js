@@ -23,13 +23,17 @@ messaging.onBackgroundMessage(function (payload) {
     const notificationTitle = payload.notification?.title || payload.data?.title || '허가원 알림';
     const notificationBody = payload.notification?.body || payload.data?.body || '새로운 알림이 있습니다.';
 
+    // 고유한 태그로 중복 알림 방지
+    const notificationTag = payload.data?.id || `permit-${Date.now()}`;
+
     const notificationOptions = {
         body: notificationBody,
         icon: '/icons/icon-192x192.png',
         badge: '/icons/icon-192x192.png',
-        tag: 'permit-app',
+        tag: notificationTag, // 중복 방지를 위한 고유 태그
         data: payload.data,
         requireInteraction: true,
+        renotify: false, // 같은 태그의 알림이 있어도 다시 알리지 않음
         actions: [
             {
                 action: 'view',

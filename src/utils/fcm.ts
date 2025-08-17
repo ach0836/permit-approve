@@ -18,10 +18,15 @@ interface MessagePayload {
     data?: Record<string, string>;
 }
 
+// 전역 상태로 중복 등록 방지
+let isServiceWorkerRegistered = false;
+let isMessageListenerSetup = false;
+let currentToken: string | null = null;
+
 // 서비스 워커 등록
 const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
     try {
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && !isServiceWorkerRegistered) {
             const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
             console.log('[FCM] Service Worker registered successfully:', registration);
 
@@ -29,7 +34,11 @@ const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null
             await navigator.serviceWorker.ready;
             console.log('[FCM] Service Worker is ready');
 
+            isServiceWorkerRegistered = true;
             return registration;
+        } else if (isServiceWorkerRegistered) {
+            console.log('[FCM] Service Worker already registered');
+            return await navigator.serviceWorker.ready;
         }
         return null;
     } catch (error) {
@@ -41,6 +50,12 @@ const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null
 // FCM 토큰 요청 및 등록 (권한이 이미 승인된 상태에서만 호출)
 export const requestFCMToken = async (userEmail: string, userRole: string): Promise<string | null> => {
     try {
+        // 이미 같은 토큰이 있으면 재사용
+        if (currentToken) {
+            console.log('[FCM] Using existing token');
+            return currentToken;
+        }
+
         // 브라우저 지원 확인
         if (!messaging) {
             console.log('[FCM] Firebase messaging is not supported in this browser');
@@ -71,6 +86,7 @@ export const requestFCMToken = async (userEmail: string, userRole: string): Prom
 
         if (token) {
             console.log('[FCM] Token obtained:', token.substring(0, 20) + '...');
+            currentToken = token;
 
             // Firestore에 토큰 저장
             await saveFCMToken(token, userEmail, userRole);
@@ -113,10 +129,18 @@ export const setupForegroundMessageListener = (onMessageReceived: (payload: Mess
         return;
     }
 
+    if (isMessageListenerSetup) {
+        console.log('[FCM] Message listener already setup');
+        return;
+    }
+
     onMessage(messaging, (payload: MessagePayload) => {
         console.log('[FCM] Foreground message received:', payload);
         onMessageReceived(payload);
     });
+
+    isMessageListenerSetup = true;
+    console.log('[FCM] Message listener setup complete');
 };
 
 // FCM 토큰 가져오기 (Firestore에서)
