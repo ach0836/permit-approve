@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store';
 import { UserRole } from '@/types';
 import { FaUser, FaSignOutAlt, FaClipboardList, FaChalkboardTeacher, FaUserShield } from 'react-icons/fa';
 import { signOut } from 'next-auth/react';
+import NotificationToggle from './NotificationToggle';
 
 const getRoleIcon = (role: UserRole) => {
     switch (role) {
@@ -94,6 +95,9 @@ export default function DashboardHeader() {
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-4">
+                        {/* 알림 토글 */}
+                        <NotificationToggle className="hidden sm:flex" />
+
                         {/* 모바일에서는 사용자 정보 간소화 */}
                         <div className="hidden sm:flex items-center gap-4 bg-gray-50 rounded-2xl px-5 py-3 border border-gray-200">
                             {user.image && (
@@ -126,6 +130,9 @@ export default function DashboardHeader() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* 모바일용 알림 토글 */}
+                        <NotificationToggle className="sm:hidden" isMobile={true} />
 
                         <button
                             onClick={handleLogout}
