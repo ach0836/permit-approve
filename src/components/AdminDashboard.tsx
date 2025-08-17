@@ -313,34 +313,38 @@ export default function AdminDashboard() {
                                 <div className="overflow-x-auto">
                                     <div className="grid gap-3">
                                         {users.map((user) => (
-                                            <div key={user.email} className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors">
+                                            <div key={user.email ?? Math.random()} className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
-                                                        {user.image && (
+                                                        {user.image ? (
                                                             <div className="w-10 h-10 rounded-2xl overflow-hidden">
-                                                                <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
+                                                                <img src={user.image} alt={user.name ?? '프로필'} className="w-full h-full object-cover" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-2xl bg-gray-200 flex items-center justify-center text-gray-400 font-bold">
+                                                                <span>{user.name && typeof user.name === 'string' ? user.name[0] : 'U'}</span>
                                                             </div>
                                                         )}
-                                                        <div className="font-bold text-black text-base">{user.name}</div>
+                                                        <div className="font-bold text-black text-base">{user.name ?? ''}</div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <div className={`px-3 py-1 rounded-full text-xs font-bold ${user.role === 'admin' ? 'bg-black text-white' :
                                                             user.role === 'teacher' ? 'bg-blue-600 text-white' :
                                                                 'bg-gray-200 text-black'
                                                             }`}>
-                                                            {getRoleText(user.role)}
+                                                            {getRoleText(user.role ?? 'student')}
                                                         </div>
                                                         <select
                                                             className="px-3 py-1 border-2 border-gray-200 rounded-xl bg-white focus:border-blue-600 transition-all outline-none text-xs font-medium text-black"
-                                                            value={user.role}
-                                                            onChange={(e) => handleRoleChange(user.email, e.target.value as UserRole)}
-                                                            disabled={updatingUserId === user.email}
+                                                            value={user.role ?? 'student'}
+                                                            onChange={(e) => handleRoleChange(user.email ?? '', e.target.value as UserRole)}
+                                                            disabled={updatingUserId === (user.email ?? '')}
                                                         >
                                                             <option value="student">학생</option>
                                                             <option value="teacher">교사</option>
                                                             <option value="admin">관리자</option>
                                                         </select>
-                                                        {updatingUserId === user.email && (
+                                                        {updatingUserId === (user.email ?? '') && (
                                                             <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                                                         )}
                                                     </div>

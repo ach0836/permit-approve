@@ -33,11 +33,16 @@ const getStatusBadge = (status: PermissionSlipStatus) => {
                     반려
                 </div>
             );
+        default:
+            return null;
     }
 };
 
 export default function StudentDashboard() {
     const [selectedLocation, setSelectedLocation] = useState<LocationType | ''>('');
+    // 시간 선택 (복수 선택 가능, 야자 1,2교시만)
+    const PERIODS = ['1교시', '2교시'];
+    const [selectedPeriods, setSelectedPeriods] = useState<string[]>([]);
     const [students, setStudents] = useState<Student[]>([{ name: '', studentId: '' }]);
     const [reason, setReason] = useState('');
     const [assignedTeacher, setAssignedTeacher] = useState('');
@@ -53,6 +58,7 @@ export default function StudentDashboard() {
         const savedStudents = localStorage.getItem('studentDashboard_students');
         const savedReason = localStorage.getItem('studentDashboard_reason');
         const savedTeacher = localStorage.getItem('studentDashboard_teacher');
+        const savedPeriods = localStorage.getItem('studentDashboard_periods');
         if (savedLocation) setSelectedLocation(savedLocation as LocationType);
         if (savedStudents) {
             try {
@@ -61,6 +67,11 @@ export default function StudentDashboard() {
         }
         if (savedReason) setReason(savedReason);
         if (savedTeacher) setAssignedTeacher(savedTeacher);
+        if (savedPeriods) {
+            try {
+                setSelectedPeriods(JSON.parse(savedPeriods));
+            } catch { }
+        }
     }, []);
 
     // 상태 저장: localStorage에 폼 데이터 저장 (클라이언트에서만)
@@ -70,6 +81,7 @@ export default function StudentDashboard() {
         localStorage.setItem('studentDashboard_students', JSON.stringify(students));
         localStorage.setItem('studentDashboard_reason', reason);
         localStorage.setItem('studentDashboard_teacher', assignedTeacher);
+        localStorage.setItem('studentDashboard_periods', JSON.stringify(selectedPeriods));
     }, [selectedLocation, students, reason, assignedTeacher]);
 
     const fetchPermissionSlips = useCallback(async () => {
@@ -143,22 +155,22 @@ export default function StudentDashboard() {
             alert('장소를 선택해주세요.');
             return;
         }
-
+        if (selectedPeriods.length === 0) {
+            alert('시간(교시)을 선택해주세요.');
+            return;
+        }
         if (!reason.trim()) {
             alert('사유를 입력해주세요.');
             return;
         }
-
         if (!assignedTeacher) {
             alert('담당 선생님을 선택해주세요.');
             return;
         }
-
         // 모든 학생 정보가 입력되었는지 확인
         const validStudents = students.filter(student =>
             student.name.trim() && student.studentId.trim()
         );
-
         if (validStudents.length === 0) {
             alert('👥 최소 1명의 학생 정보를 입력해주세요.');
             return;
@@ -176,15 +188,16 @@ export default function StudentDashboard() {
                     students: validStudents,
                     reason: reason.trim(),
                     assignedTeacher: assignedTeacher,
+                    periods: selectedPeriods,
                     userEmail: user?.email,
                     userName: user?.name
                 }),
             });
-
             if (response.ok) {
                 const newSlip = await response.json();
                 addPermissionSlip(convertPermissionSlipData(newSlip as Record<string, unknown>) as PermissionSlip);
                 resetForm();
+                setSelectedPeriods([]);
                 setToast({ message: '신청이 완료되었습니다!', type: 'success' });
             } else {
                 const error = await response.json();
@@ -274,6 +287,38 @@ export default function StudentDashboard() {
                                             <span className="font-bold">선택된 장소:</span>
                                             <span className="font-medium bg-white px-3 py-1 rounded-full border border-blue-300">{selectedLocation}</span>
                                         </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 시간 선택 (복수 선택 가능) */}
+                            <div className="mb-4">
+                                <label className="block text-sm sm:text-base font-bold text-black mb-3 sm:mb-4">
+                                    <FaClock className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-400" />
+                                    시간 선택 (복수 선택 가능)
+                                </label>
+                                <div className="flex flex-wrap gap-2 sm:gap-3">
+                                    {PERIODS.map(period => (
+                                        <button
+                                            key={period}
+                                            type="button"
+                                            className={`px-4 py-2 rounded-xl font-semibold text-xs sm:text-base border-2 transition-all duration-150 ${selectedPeriods.includes(period) ? 'bg-blue-400 text-white border-blue-400' : 'bg-white text-blue-400 border-blue-200 hover:bg-blue-50'}`}
+                                            onClick={() => {
+                                                setSelectedPeriods(selectedPeriods.includes(period)
+                                                    ? selectedPeriods.filter(p => p !== period)
+                                                    : [...selectedPeriods, period]);
+                                            }}
+                                        >
+                                            {period}
+                                        </button>
+                                    ))}
+                                </div>
+                                {selectedPeriods.length > 0 && (
+                                    <div className="mt-3 p-3 bg-blue-50 border-2 border-blue-200 rounded-xl shadow-sm flex flex-wrap gap-2 text-xs sm:text-sm text-blue-800">
+                                        <span className="font-bold">선택된 시간:</span>
+                                        {selectedPeriods.map(period => (
+                                            <span key={period} className="bg-white px-3 py-1 rounded-full border border-blue-300">{period}</span>
+                                        ))}
                                     </div>
                                 )}
                             </div>
@@ -389,7 +434,7 @@ export default function StudentDashboard() {
 
                             {/* 사유 입력 */}
                             <div>
-                                <label className="block text-sm sm:text-base font-bold text-black mb-3 sm:mb-4">
+                                <label className="block text-sm sm:text-base font-bold text-black mb-5 sm:mb-7">
                                     <FaClipboardList className="inline w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-400" />
                                     허가원 사유를 작성하시요
                                 </label>

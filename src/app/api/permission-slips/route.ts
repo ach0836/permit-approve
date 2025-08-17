@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const { location, students, reason, assignedTeacher, userEmail, userName } = await request.json();
+        const { location, students, reason, assignedTeacher, userEmail, userName, periods } = await request.json();
 
         if (!location || !students || !reason || !assignedTeacher) {
             return NextResponse.json({ error: 'Location, students, reason, and assigned teacher are required' }, { status: 400 });
@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
             students,
             reason: reason.trim(),
             assignedTeacher: assignedTeacher,
+            periods: periods || [],
             status: 'pending' as PermissionSlipStatus,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -96,6 +97,39 @@ export async function POST(request: NextRequest) {
         // Firestore에 저장
         const permissionSlipsRef = collection(db, 'permissionSlips');
         const docRef = await addDoc(permissionSlipsRef, newPermissionSlip);
+
+        // 담당 선생님에게 알림 전송
+        try {
+            const periodsText = Array.isArray(periods) && periods.length > 0
+                ? `${periods.length}교시 (${periods.join(', ')})`
+                : '교시 정보 없음';
+            const studentCountText = `총 ${students.length}명`;
+
+            const notificationTitle = '📋 새로운 허가원이 도착했습니다';
+            const notificationBody = `${userName}님이 허가원을 제출했습니다.\n📍 장소: ${location}\n🕐 시간: ${periodsText}\n👥 학생수: ${studentCountText}\n📝 사유: ${reason}`;
+
+            // 알림 전송 API 호출
+            await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/notifications/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userEmail: assignedTeacher,
+                    title: notificationTitle,
+                    body: notificationBody,
+                    data: {
+                        type: 'permission-slip-submitted',
+                        slipId: docRef.id,
+                        studentName: userName || '학생',
+                        location: location
+                    }
+                }),
+            });
+        } catch (notificationError) {
+            console.error('Error sending notification to teacher:', notificationError);
+            // 알림 전송 실패해도 허가원 생성은 성공으로 처리
+        }
 
         return NextResponse.json({
             id: docRef.id,

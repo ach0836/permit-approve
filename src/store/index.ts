@@ -1,16 +1,16 @@
 import { create } from 'zustand';
-import { SessionUser, PermissionSlip } from '@/types';
+import { User, PermissionSlip } from '@/types';
 
 interface AuthStore {
-    user: SessionUser | null;
+    user: User | null;
     isLoading: boolean;
-    setUser: (user: SessionUser | null) => void;
+    setUser: (user: User | null) => void;
     setLoading: (loading: boolean) => void;
     clearUser: () => void;
     // 로컬 스토리지에서 사용자 정보 로드
     loadUserFromStorage: () => void;
     // 로컬 스토리지에 사용자 정보 저장
-    saveUserToStorage: (user: SessionUser | null) => void;
+    saveUserToStorage: (user: User | null) => void;
 }
 
 interface PermissionSlipStore {

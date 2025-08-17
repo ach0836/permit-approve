@@ -57,7 +57,6 @@ export default function SessionProvider({ children }: SessionProviderProps) {
                 lastSessionRef.current = sessionEmail;
 
                 authStore.setUser({
-                    id: sessionEmail,
                     email: sessionEmail,
                     name: sessionName,
                     image: sessionImage,

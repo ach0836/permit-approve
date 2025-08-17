@@ -1,0 +1,141 @@
+import { messaging, getToken, onMessage } from '@/lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+export interface FCMTokenData {
+    token: string;
+    userEmail: string;
+    userRole: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+// 서비스 워커 등록
+const registerServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+    try {
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+            console.log('[FCM] Service Worker registered successfully:', registration);
+
+            // 서비스 워커가 준비될 때까지 기다림
+            await navigator.serviceWorker.ready;
+            console.log('[FCM] Service Worker is ready');
+
+            return registration;
+        }
+        return null;
+    } catch (error) {
+        console.error('[FCM] Service Worker registration failed:', error);
+        return null;
+    }
+};
+
+// FCM 토큰 요청 및 등록
+export const requestFCMToken = async (userEmail: string, userRole: string): Promise<string | null> => {
+    try {
+        // 브라우저 지원 확인
+        if (!messaging) {
+            console.log('[FCM] Firebase messaging is not supported in this browser');
+            return null;
+        }
+
+        // 서비스 워커 등록
+        const registration = await registerServiceWorker();
+        if (!registration) {
+            console.error('[FCM] Failed to register service worker');
+            return null;
+        }
+
+        // 알림 권한 요청
+        const permission = await Notification.requestPermission();
+        console.log('[FCM] Notification permission:', permission);
+
+        if (permission !== 'granted') {
+            console.log('[FCM] Notification permission denied');
+            return null;
+        }
+
+        // FCM 토큰 가져오기
+        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+        if (!vapidKey) {
+            console.error('[FCM] VAPID key is not configured');
+            return null;
+        }
+
+        const token = await getToken(messaging, { vapidKey });
+
+        if (token) {
+            console.log('[FCM] Token obtained:', token.substring(0, 20) + '...');
+
+            // Firestore에 토큰 저장
+            await saveFCMToken(token, userEmail, userRole);
+            console.log('[FCM] Token saved successfully');
+
+            return token;
+        } else {
+            console.log('[FCM] No registration token available');
+            return null;
+        }
+    } catch (error) {
+        console.error('[FCM] Error getting FCM token:', error);
+        return null;
+    }
+};
+
+// FCM 토큰을 Firestore에 저장
+export const saveFCMToken = async (token: string, userEmail: string, userRole: string): Promise<void> => {
+    try {
+        const tokenData: FCMTokenData = {
+            token,
+            userEmail,
+            userRole,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        await setDoc(doc(db, 'fcmTokens', userEmail), tokenData, { merge: true });
+        console.log('[FCM] Token saved to Firestore for user:', userEmail);
+    } catch (error) {
+        console.error('[FCM] Error saving FCM token:', error);
+        throw error;
+    }
+};
+
+// 포그라운드 메시지 리스너 설정
+export const setupForegroundMessageListener = (onMessageReceived: (payload: any) => void): void => {
+    if (!messaging) {
+        console.log('[FCM] Messaging not available for foreground listener');
+        return;
+    }
+
+    onMessage(messaging, (payload) => {
+        console.log('[FCM] Foreground message received:', payload);
+        onMessageReceived(payload);
+    });
+};
+
+// FCM 토큰 가져오기 (Firestore에서)
+export const getFCMToken = async (userEmail: string): Promise<string | null> => {
+    try {
+        const tokenDoc = await getDoc(doc(db, 'fcmTokens', userEmail));
+        if (tokenDoc.exists()) {
+            const data = tokenDoc.data() as FCMTokenData;
+            return data.token;
+        }
+        console.log('[FCM] No token found for user:', userEmail);
+        return null;
+    } catch (error) {
+        console.error('[FCM] Error getting FCM token from Firestore:', error);
+        return null;
+    }
+};
+
+// FCM 초기화 확인
+export const checkFCMSupport = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    if (!('serviceWorker' in navigator)) return false;
+    if (!('Notification' in window)) return false;
+    if (!messaging) return false;
+
+    return true;
+};

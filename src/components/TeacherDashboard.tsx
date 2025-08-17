@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePermissionSlipStore, useAuthStore } from '@/store';
 import { TEACHERS, LOCATIONS } from '@/types';
+import type { PermissionSlip } from '@/types';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { convertPermissionSlipData } from '@/utils/firebase';
@@ -187,9 +188,14 @@ export default function TeacherDashboard() {
                                                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-4">
                                                         <h3 className="font-bold text-black text-lg">{slip.studentName}</h3>
                                                         <div className="flex flex-wrap gap-2">
-                                                            <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium">
-                                                                {slip.studentEmail}
-                                                            </div>
+                                                            {/* 신청 교시 표시 */}
+                                                            {Array.isArray(slip.periods) && slip.periods.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {slip.periods.map((period, idx) => (
+                                                                        <span key={idx} className="px-2 py-1 bg-blue-400 text-white rounded-full text-xs font-bold">{period}</span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                             {slip.location && (
                                                                 <div className="px-3 py-1 bg-gray-100 text-black rounded-full text-xs sm:text-sm font-medium">
                                                                     위치: {slip.location}
@@ -369,14 +375,21 @@ export default function TeacherDashboard() {
                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                                     <div className="flex-1 w-full">
                                                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-4">
-                                                            <h3 className="font-bold text-black text-lg">{slip.studentName}</h3>
+                                                            <h3 className="font-bold text-black text-lg">{slip.studentName ?? ''}</h3>
                                                             <div className="flex flex-wrap gap-2">
-                                                                <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs sm:text-sm font-medium">
-                                                                    {slip.studentEmail}
-                                                                </div>
-                                                                <div className="px-3 py-1 bg-gray-100 text-black rounded-full text-xs sm:text-sm font-medium">
-                                                                    위치: {slip.location}
-                                                                </div>
+                                                                {/* 신청 교시 표시 */}
+                                                                {Array.isArray(slip.periods) && slip.periods.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {slip.periods.map((period, idx) => (
+                                                                            <span key={idx} className="px-2 py-1 bg-blue-400 text-white rounded-full text-xs font-bold">{period}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                                {slip.location && (
+                                                                    <div className="px-3 py-1 bg-gray-100 text-black rounded-full text-xs sm:text-sm font-medium">
+                                                                        위치: {slip.location}
+                                                                    </div>
+                                                                )}
                                                                 <div className="px-3 py-1 bg-blue-400 text-white rounded-full text-xs sm:text-sm font-medium">
                                                                     승인완료
                                                                 </div>
@@ -396,16 +409,16 @@ export default function TeacherDashboard() {
                                                         )}
 
                                                         {/* 참여 학생 목록 */}
-                                                        {slip.students && slip.students.length > 0 && (
+                                                        {Array.isArray(slip.students) && slip.students.length > 0 && (
                                                             <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
                                                                 <div className="text-sm sm:text-base font-bold text-black mb-3 sm:mb-4 flex items-center gap-2">
                                                                     참여 학생 명단 ({slip.students.length}명)
                                                                 </div>
                                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                                                                     {slip.students.map((student, index) => (
-                                                                        <div key={index} className="bg-white border border-blue-200 rounded-xl p-4 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-all">
-                                                                            <div className="font-bold text-black text-base mb-1">{student.name}</div>
-                                                                            <div className="text-sm text-gray-400 font-medium">{student.studentId}</div>
+                                                                        <div key={index} className="bg-white border-2 border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                                                                            <div className="font-bold text-black text-sm sm:text-base">{student.name ?? ''}</div>
+                                                                            <div className="text-xs sm:text-sm text-gray-400 font-medium">{student.studentId ?? ''}</div>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -414,12 +427,12 @@ export default function TeacherDashboard() {
 
                                                         <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 mb-4 sm:mb-5">
                                                             <div className="text-sm sm:text-base font-bold text-black mb-2 sm:mb-3"> 사유</div>
-                                                            <p className="text-gray-800 leading-relaxed text-sm sm:text-base">{slip.reason}</p>
+                                                            <p className="text-gray-800 leading-relaxed text-sm sm:text-base">{slip.reason ?? ''}</p>
                                                         </div>
 
                                                         <div className="flex justify-between text-xs sm:text-sm text-gray-400 font-medium">
-                                                            <span>제출: {format(slip.createdAt, 'HH:mm', { locale: ko })}</span>
-                                                            {slip.processedBy && (
+                                                            <span>제출: {slip.createdAt ? format(slip.createdAt, 'HH:mm', { locale: ko }) : ''}</span>
+                                                            {slip.processedBy?.processedAt && (
                                                                 <span>승인: {format(slip.processedBy.processedAt, 'HH:mm', { locale: ko })}</span>
                                                             )}
                                                         </div>

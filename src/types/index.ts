@@ -8,22 +8,8 @@ export type PermissionSlipStatus = 'pending' | 'approved' | 'rejected';
 export interface User {
     email: string;
     name: string;
-    image?: string;
     role: UserRole;
-    createdAt: Date;
-    updatedAt: Date;
-}
-
-export interface AuthUser extends User {
-    id: string;
-}
-
-export interface SessionUser {
-    id: string;
-    email: string;
-    name: string;
     image?: string;
-    role: UserRole;
 }
 
 export interface Student {
@@ -47,6 +33,7 @@ export interface PermissionSlip {
         name: string;
         processedAt: Date;
     };
+    periods?: Array<'1교시' | '2교시'>;
 }
 
 // ==================== 상수 데이터 ====================
